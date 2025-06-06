@@ -1,11 +1,14 @@
 <!DOCTYPE html>
 <html lang="en" data-color-scheme="light">
+
 <head>
+    <!--TODO: Add necessary headers-->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Profolio - Digital Footprint Intelligence</title>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <div id="app">
         <!-- Navigation Header -->
@@ -209,7 +212,7 @@
                                 <div class="card__body">
                                     <h3>Recent Searches</h3>
                                     <div id="search-history">
-                                        <p class="empty-state">No searches yet. Create your first report above.</p>
+                                        <p class="empty-state">No searches yet. Create your first report above</p>
                                     </div>
                                 </div>
                             </div>
@@ -278,6 +281,24 @@
             </div>
         </section>
 
+        <!-- Loading Overlay -->
+        <div id="loading-overlay" class="loading-overlay hidden">
+            <div class="loading-content">
+                <div class="loading-spinner"></div>
+                <h3>Analyzing Digital Footprint...</h3>
+                <p>This may take a few moments</p>
+            </div>
+        </div>
 
+        <!-- Notification Toast -->
+        <div id="notification-toast" class="notification-toast hidden">
+            <div class="notification-content">
+                <span id="notification-message"></span>
+                <button id="notification-close">&times;</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
 </body>
 </html>
