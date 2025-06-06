@@ -7,7 +7,25 @@ import json
 
 from AI_crawler_service import crawler_service
 
+def smart_parse_website(url, user_query):
+    
+    """
+    This function takes a URL and a user query, parses the website with AI (using the crawler service),
+    and then formats the output into a JSON object.
 
+    The output JSON object is a dictionary with the following keys:
+    - raw: the raw markdown text of the website
+    - fit: a list of strings, each representing a "fit" of the user query to the website text.
+
+    If the user query is not found in the website text, the function returns None.
+    """
+    
+    raw, fit = crawler_service.get_markdown(url, user_query)
+    
+    if isinstance(fit, list):
+        return [answer_to_json(fit_text) if fit_text else None for fit_text in fit]
+    else:
+        return answer_to_json(fit)
     
 
 def answer_to_json(raw_text):
