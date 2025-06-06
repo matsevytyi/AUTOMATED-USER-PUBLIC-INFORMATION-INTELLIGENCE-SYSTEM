@@ -143,5 +143,59 @@
             </div>
         </section>
 
+
+        <!-- Dashboard Page -->
+        <section id="dashboard-page" class="page">
+            <div class="dashboard-header">
+                <div class="container flex items-center justify-between">
+                    <div>
+                        <h1>Digital Footprint Dashboard</h1>
+                        <p class="dashboard-welcome">Welcome back, <span id="user-name">User</span></p>
+                    </div>
+                    <div class="dashboard-nav">
+                        <button class="btn btn--outline" id="profile-btn">Profile</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dashboard-content">
+                <div class="container">
+                    <div class="dashboard-grid">
+                        <!-- Search Section -->
+                        <div class="dashboard-section">
+                            <div class="section-card card">
+                                <div class="card__body">
+                                    <h3>New Search</h3>
+                                    <form id="search-form">
+                                        <div class="form-group">
+                                            <label class="form-label" for="search-query">Search Query</label>
+                                            <input type="text" id="search-query" class="form-control" placeholder="Enter name, email, or other identifying information" required>
+                                            <div class="form-help">Enter personal information to analyze digital footprint</div>
+                                        </div>
+                                        <button type="submit" class="btn btn--primary" id="search-submit-btn">
+                                            Generate Report
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Search History -->
+                        <div class="dashboard-section">
+                            <div class="section-card card">
+                                <div class="card__body">
+                                    <h3>Recent Searches</h3>
+                                    <div id="search-history">
+                                        <p class="empty-state">No searches yet. Create your first report above.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
 </body>
 </html>
