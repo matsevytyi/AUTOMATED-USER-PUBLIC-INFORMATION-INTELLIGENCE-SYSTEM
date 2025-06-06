@@ -143,7 +143,6 @@
             </div>
         </section>
 
-
         <!-- Dashboard Page -->
         <section id="dashboard-page" class="page">
             <div class="dashboard-header">
@@ -193,6 +192,64 @@
                         </div>
                     </div>
 
+                    <!-- Report Display -->
+                    <div id="report-section" class="hidden">
+                        <div class="report-card card">
+                            <div class="card__header">
+                                <div class="flex items-center justify-between">
+                                    <h2 id="report-title">Digital Footprint Report</h2>
+                                    <div class="report-meta">
+                                        <span class="status status--success" id="report-status">Completed</span>
+                                        <span id="report-id"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card__body">
+                                <!-- Executive Summary -->
+                                <div class="report-section">
+                                    <h3>Executive Summary</h3>
+                                    <p id="executive-summary"></p>
+                                </div>
+
+                                <!-- Risk Distribution -->
+                                <div class="report-section">
+                                    <h3>Risk Distribution</h3>
+                                    <div class="risk-grid">
+                                        <div class="risk-item risk-high">
+                                            <div class="risk-count" id="high-risk-count">0</div>
+                                            <div class="risk-label">High Risk</div>
+                                        </div>
+                                        <div class="risk-item risk-medium">
+                                            <div class="risk-count" id="medium-risk-count">0</div>
+                                            <div class="risk-label">Medium Risk</div>
+                                        </div>
+                                        <div class="risk-item risk-low">
+                                            <div class="risk-count" id="low-risk-count">0</div>
+                                            <div class="risk-label">Low Risk</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Detailed Findings -->
+                                <div class="report-section">
+                                    <h3>Detailed Findings</h3>
+                                    <div id="findings-list"></div>
+                                </div>
+
+                                <!-- Recommendations -->
+                                <div class="report-section">
+                                    <h3>Recommendations</h3>
+                                    <div id="recommendations-list"></div>
+                                </div>
+
+                                <!-- Source Distribution -->
+                                <div class="report-section">
+                                    <h3>Information Sources</h3>
+                                    <div id="source-distribution"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
