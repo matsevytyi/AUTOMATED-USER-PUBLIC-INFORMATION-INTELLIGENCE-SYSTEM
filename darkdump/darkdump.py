@@ -21,6 +21,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 '''
 
+import os, sys
+
+sys.path.append(os.path.abspath(os.path.dirname(__file__)))
+
 __version__ = 3
 
 import sys
@@ -220,9 +224,11 @@ class Darkdump(object):
         return links
 
 
-    def crawl(self, query, amount, use_proxy=False, scrape_sites=False, scrape_images=False, debug_mode=False):
+    def crawl(self, query, amount, use_proxy=False, scrape_sites=False, scrape_images=False, debug_mode=False, extract_full_text=True, save_to_json=False):
         headers = {'User-Agent': random.choice(Headers.user_agents)}
         proxy_config = {'http': 'socks5h://localhost:9050', 'https': 'socks5h://localhost:9050'} if use_proxy else {}
+        
+        parsed_results = []
 
         # Fetching the initial search page
         try:
@@ -255,11 +261,32 @@ class Darkdump(object):
                     try:
                         site_response = requests.get(site_url, headers=headers, proxies=proxy_config)
                         site_soup = BeautifulSoup(site_response.content, 'html.parser')
-                        text_analysis = self.analyze_text(site_soup.get_text())
+                        parsed_text = site_soup.get_text()
+
+                        text_analysis = self.analyze_text(parsed_text)
                         metadata = self.extract_metadata(site_soup)
                         links = self.extract_links(site_soup)
                         emails = self.extract_emails(site_soup)
                         documents = self.extract_document_links(site_soup)
+
+
+                        # Collect all info into a dictionary
+                        if extract_full_text:
+                            result = {
+                                'title': title.strip(),
+                                'description': description.strip(),
+                                'url': site_url,
+                                'parsed_text': parsed_text,
+                                'keywords': self.extract_keywords(parsed_text),
+                                'sentiment': text_analysis['sentiment'],
+                                'metadata': metadata,
+                                'links': links,
+                                'emails': emails,
+                                'documents': documents
+                            }
+                            
+                            parsed_results.append(result)
+
 
                         if scrape_images:
                             images = site_soup.find_all('img')
@@ -298,6 +325,16 @@ class Darkdump(object):
 
             except KeyboardInterrupt as ki:
                 print(f"{Colors.BOLD + Colors.R} Quitting... {Colors.END}")
+        
+        if save_to_json:        
+            # Save all parsed results to a JSON file
+            output_filename = 'parsed_sites_output.json'
+            with open(output_filename, 'w', encoding='utf-8') as f:
+                json.dump(parsed_results, f, ensure_ascii=False, indent=2)
+            print(f"Saved parsed output to {output_filename}")
+        
+        return parsed_results
+
 
 
 def darkdump_main():
