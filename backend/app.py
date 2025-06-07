@@ -174,6 +174,24 @@ def login():
     except Exception as e:
         return jsonify({'success': False, 'message': 'Login failed. Please try again.'}), 500
 
+@app.route('/api/confirm', methods=['POST'])
+def confirm_email():
+    try:
+        data = request.json
+        email = data.get('email', '').strip().lower()
+        
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            return jsonify({'success': False, 'message': 'User not found.'}), 404
+        
+        user.confirmed = True
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': 'Email confirmed successfully. You can now log in.'})
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': 'Email confirmation failed.'}), 500
 
 @app.route('/api/search', methods=['POST'])
 @jwt_required()
