@@ -1,93 +1,13 @@
 // Application State
 const AppState = {
     currentUser: null,
+    jwt: null,
     currentPage: 'home',
     searchHistory: [],
-    currentReport: null
+    currentReport: null,
+    pendingUser: null
 };
 
-// Mock Data (simulating Flask backend responses)
-const MockData = {
-    users: [
-        {
-            email: "demo@profolio.com",
-            password: "Demo123!",
-            confirmed: true,
-            name: "Demo User"
-        }
-    ],
-    reports: [
-        {
-            report_id: "RPT-2024-001",
-            user: "demo@profolio.com",
-            query: "John Smith social media",
-            generated_at: "2024-12-06T18:00:00Z",
-            status: "completed",
-            executive_summary: "Digital footprint analysis reveals moderate online exposure across 8 platforms with 3 high-risk information pieces requiring attention.",
-            risk_distribution: {
-                high: 3,
-                medium: 7,
-                low: 12
-            },
-            detailed_findings: [
-                {
-                    source: "LinkedIn",
-                    category: "Professional",
-                    info: "Current employment at TechCorp Inc.",
-                    risk: "low",
-                    timestamp: "2024-11-15",
-                    url: "linkedin.com/in/johnsmith"
-                },
-                {
-                    source: "Twitter",
-                    category: "Social Media",
-                    info: "Public tweets mentioning personal location",
-                    risk: "medium",
-                    timestamp: "2024-12-01",
-                    url: "twitter.com/johnsmith123"
-                },
-                {
-                    source: "Data Breach Database",
-                    category: "Security",
-                    info: "Email found in 2023 breach of ExampleSite",
-                    risk: "high",
-                    timestamp: "2023-08-15",
-                    url: "N/A"
-                },
-                {
-                    source: "Facebook",
-                    category: "Social Media", 
-                    info: "Public profile with family photos",
-                    risk: "medium",
-                    timestamp: "2024-10-20",
-                    url: "facebook.com/john.smith"
-                },
-                {
-                    source: "Public Records",
-                    category: "Legal",
-                    info: "Property ownership records",
-                    risk: "low",
-                    timestamp: "2024-01-10",
-                    url: "N/A"
-                }
-            ],
-            recommendations: [
-                "Review privacy settings on social media accounts",
-                "Consider changing passwords for accounts involved in data breaches",
-                "Limit location sharing in social media posts",
-                "Monitor credit reports for suspicious activity"
-            ],
-            source_distribution: {
-                "Social Media": 8,
-                "Professional Networks": 3,
-                "Public Records": 4,
-                "News/Articles": 2,
-                "Data Breaches": 1,
-                "Forums/Blogs": 4
-            }
-        }
-    ]
-};
 
 // Utility Functions
 function showNotification(message, type = 'info') {
@@ -198,7 +118,74 @@ function updateNavigation() {
     }
 }
 
-// Authentication Functions
+// Main authentication functions
+
+async function registerUser(formData) {
+    const response = await fetch('/api/register', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(formData)
+    });
+    return await response.json();
+}
+
+async function loginUser(formData) {
+    const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(formData)
+    });
+    const data = await response.json();
+    if (data.success) {
+        AppState.currentUser = data.user;
+        AppState.jwt = data.access_token;
+    }
+    return data;
+}
+
+async function confirmEmail(email) {
+    const response = await fetch('/api/confirm', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ email })
+    });
+    return await response.json();
+}
+
+async function searchReport(query) {
+    const response = await fetch('/api/search', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + AppState.jwt
+        },
+        body: JSON.stringify({ query })
+    });
+    return await response.json();
+}
+
+async function getHistory() {
+    const response = await fetch('/api/history', {
+        method: 'GET',
+        headers: {
+            'Authorization': 'Bearer ' + AppState.jwt
+        }
+    });
+    return await response.json();
+}
+
+async function getReport(reportId) {
+    const response = await fetch(`/api/report/${reportId}`, {
+        method: 'GET',
+        headers: {
+            'Authorization': 'Bearer ' + AppState.jwt
+        }
+    });
+    return await response.json();
+}
+
+
+// Authentication Util Functions
 function validateEmail(email) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
@@ -290,76 +277,6 @@ function validateLoginForm() {
     }
     
     return isValid;
-}
-
-// Simulate API calls
-function simulateAPICall(endpoint, data, delay = 1500) {
-    return new Promise((resolve, reject) => {
-        setTimeout(() => {
-            try {
-                switch (endpoint) {
-                    case 'register':
-                        // Check if user already exists
-                        const existingUser = MockData.users.find(user => user.email === data.email);
-                        if (existingUser) {
-                            reject({ message: 'User with this email already exists' });
-                        } else {
-                            // Add new user
-                            const newUser = {
-                                email: data.email,
-                                password: data.password,
-                                name: data.name,
-                                confirmed: false
-                            };
-                            MockData.users.push(newUser);
-                            resolve({ message: 'Registration successful', user: newUser });
-                        }
-                        break;
-                        
-                    case 'login':
-                        const user = MockData.users.find(u => u.email === data.email && u.password === data.password);
-                        if (user) {
-                            if (!user.confirmed) {
-                                reject({ message: 'Please confirm your email address before logging in' });
-                            } else {
-                                resolve({ message: 'Login successful', user: user });
-                            }
-                        } else {
-                            reject({ message: 'Invalid email or password' });
-                        }
-                        break;
-                        
-                    case 'confirm':
-                        const userToConfirm = MockData.users.find(u => u.email === data.email);
-                        if (userToConfirm) {
-                            userToConfirm.confirmed = true;
-                            resolve({ message: 'Email confirmed successfully', user: userToConfirm });
-                        } else {
-                            reject({ message: 'User not found' });
-                        }
-                        break;
-                        
-                    case 'search':
-                        // Generate a new report based on the query
-                        const reportId = 'RPT-' + Date.now();
-                        const newReport = {
-                            ...MockData.reports[0],
-                            report_id: reportId,
-                            query: data.query,
-                            user: AppState.currentUser.email,
-                            generated_at: new Date().toISOString()
-                        };
-                        resolve({ message: 'Search completed', report: newReport });
-                        break;
-                        
-                    default:
-                        reject({ message: 'Unknown endpoint' });
-                }
-            } catch (error) {
-                reject({ message: 'Internal server error' });
-            }
-        }, delay);
-    });
 }
 
 // Dashboard Functions
@@ -538,17 +455,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 password: document.getElementById('register-password').value
             };
             
-            try {
-                const response = await simulateAPICall('register', formData);
+            const response = await registerUser(formData);
+            if (response.success) {
+                AppState.pendingUser = { email: formData.email };
                 showNotification(response.message, 'success');
-                
-                // Store user for confirmation
-                AppState.pendingUser = response.user;
                 showPage('confirm');
-            } catch (error) {
-                showNotification(error.message, 'error');
-            } finally {
-                setButtonLoading(submitBtn, false);
+            } else {
+                showNotification(response.message, 'error');
             }
         });
     }
@@ -571,15 +484,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 password: document.getElementById('login-password').value
             };
             
-            try {
-                const response = await simulateAPICall('login', formData);
-                AppState.currentUser = response.user;
+            const response = await loginUser(formData);
+            if (response.success) {
                 showNotification(response.message, 'success');
                 showPage('dashboard');
-            } catch (error) {
-                showNotification(error.message, 'error');
-            } finally {
-                setButtonLoading(submitBtn, false);
+                await reloadSearchHistory();
+            } else {
+                showNotification(response.message, 'error');
             }
         });
     }
@@ -596,11 +507,19 @@ document.addEventListener('DOMContentLoaded', function() {
             setButtonLoading(this, true);
             
             try {
-                const response = await simulateAPICall('confirm', { email: AppState.pendingUser.email });
+
+                const response = await fetch('/api/confirm', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ email: AppState.pendingUser.email })
+                }).then(res => res.json());
+
                 AppState.currentUser = response.user;
                 AppState.pendingUser = null;
+
                 showNotification(response.message, 'success');
                 showPage('dashboard');
+
             } catch (error) {
                 showNotification(error.message, 'error');
             } finally {
@@ -627,29 +546,49 @@ document.addEventListener('DOMContentLoaded', function() {
             const submitBtn = document.getElementById('search-submit-btn');
             setButtonLoading(submitBtn, true);
             showLoading();
-            
-            try {
-                const response = await simulateAPICall('search', { query: query }, 2000);
-                
-                // Add to search history
+
+            const response = await searchReport(query);
+
+            if (response.success) {
                 AppState.searchHistory.unshift(response.report);
-                
-                // Display the report
                 displayReport(response.report);
-                
-                // Update search history display
                 loadSearchHistory();
-                
-                // Clear the form
-                queryField.value = '';
-                
                 showNotification('Report generated successfully', 'success');
-            } catch (error) {
-                showNotification(error.message, 'error');
-            } finally {
-                setButtonLoading(submitBtn, false);
-                hideLoading();
+            } else {
+                showNotification(response.message, 'error');
             }
+            
+            // try {
+
+            //     const response = await fetch('/api/search', {
+            //         method: 'POST',
+            //         headers: {
+            //             'Content-Type': 'application/json',
+            //             'Authorization': 'Bearer ' + AppState.jwt  // JWT from login
+            //         },
+            //         body: JSON.stringify({ query: query })
+            //     }).then(res => res.json());
+
+                
+            //     // Add to search history
+            //     AppState.searchHistory.unshift(response.report);
+                
+            //     // Display the report
+            //     displayReport(response.report);
+                
+            //     // Update search history display
+            //     loadSearchHistory();
+                
+            //     // Clear the form
+            //     queryField.value = '';
+                
+            //     showNotification('Report generated successfully', 'success');
+            // } catch (error) {
+            //     showNotification(error.message, 'error');
+            // } finally {
+            //     setButtonLoading(submitBtn, false);
+            //     hideLoading();
+            // }
         });
     }
     
@@ -681,6 +620,21 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize the application
     updateNavigation();
 });
+
+async function reloadSearchHistory() {
+    const response = await getHistory();
+    if (response.success) {
+        // For each history item, get the report details
+        const reports = [];
+        for (const hist of response.history) {
+            const rep = await getReport(hist.report_id);
+            if (rep.success) reports.push(rep.report);
+        }
+        AppState.searchHistory = reports;
+        loadSearchHistory();
+    }
+}
+
 
 // Make loadReport function global for onclick handlers
 window.loadReport = loadReport;
