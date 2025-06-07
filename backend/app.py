@@ -244,6 +244,11 @@ def get_report(report_id):
     except Exception as e:
         return jsonify({'success': False, 'message': 'Failed to retrieve report.'}), 500
 
+# Health check endpoint
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    return jsonify({'status': 'healthy', 'timestamp': datetime.utcnow().isoformat() + 'Z'})
+
 # Entry point of frontend serve
 @app.route('/')
 def home():
