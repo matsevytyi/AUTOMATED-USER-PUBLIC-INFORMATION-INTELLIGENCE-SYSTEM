@@ -225,6 +225,25 @@ def search():
         db.session.rollback()
         return jsonify({'success': False, 'message': 'Search failed. Please try again.'}), 500
 
+@app.route('/api/report/<report_id>', methods=['GET'])
+@jwt_required()
+def get_report(report_id):
+    try:
+        current_user_email = get_jwt_identity()
+        user = User.query.filter_by(email=current_user_email).first()
+        
+        if not user:
+            return jsonify({'success': False, 'message': 'User not found.'}), 404
+        
+        report = Report.query.filter_by(report_id=report_id, user_id=user.id).first()
+        if not report:
+            return jsonify({'success': False, 'message': 'Report not found.'}), 404
+        
+        return jsonify({'success': True, 'report': report.to_dict()})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': 'Failed to retrieve report.'}), 500
+
 # Entry point of frontend serve
 @app.route('/')
 def home():
