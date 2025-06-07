@@ -244,6 +244,25 @@ def get_report(report_id):
     except Exception as e:
         return jsonify({'success': False, 'message': 'Failed to retrieve report.'}), 500
 
+@app.route('/api/history', methods=['GET'])
+@jwt_required()
+def get_search_history():
+    try:
+        current_user_email = get_jwt_identity()
+        user = User.query.filter_by(email=current_user_email).first()
+        
+        if not user:
+            return jsonify({'success': False, 'message': 'User not found.'}), 404
+        
+        searches = SearchHistory.query.filter_by(user_id=user.id).order_by(SearchHistory.created_at.desc()).all()
+        history = [search.to_dict() for search in searches]
+        
+        return jsonify({'success': True, 'history': history})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': 'Failed to retrieve search history.'}), 500
+
+
 # Health check endpoint
 @app.route('/api/health', methods=['GET'])
 def health_check():
