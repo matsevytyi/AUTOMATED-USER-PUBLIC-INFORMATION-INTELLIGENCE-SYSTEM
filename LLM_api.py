@@ -2,6 +2,13 @@ from langchain_openai import ChatOpenAI
 
 import os
 
+# import the .env file
+from dotenv import load_dotenv
+load_dotenv()
+
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+print(f"OPENAI_API_KEY retrieved: {OPENAI_API_KEY[:4]}...{OPENAI_API_KEY[-4:]}")
 
 # initiate the model
 llm = ChatOpenAI(temperature=0.5, model='gpt-4o-mini', api_key=OPENAI_API_KEY)
