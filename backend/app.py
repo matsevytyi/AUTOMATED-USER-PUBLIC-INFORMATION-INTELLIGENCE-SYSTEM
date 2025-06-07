@@ -1,7 +1,6 @@
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
-from flask_jwt_extended import JWTManager
-import bcrypt
+from flask_jwt_extended import JWTManager, create_access_token
 
 from config import Config
 from models import db, User
@@ -72,6 +71,42 @@ def register():
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': 'Registration failed. Please try again.'}), 500
+
+@app.route('/api/login', methods=['POST'])
+def login():
+    try:
+        data = request.json
+        email = data.get('email', '').strip().lower()
+        password = data.get('password', '')
+        
+        if not email or not password:
+            return jsonify({'success': False, 'message': 'Email and password are required.'}), 400
+        
+        # Find user
+        user = User.query.filter_by(email=email).first()
+        if not user or not verify_password(password, user.password_hash):
+            return jsonify({'success': False, 'message': 'Invalid email or password.'}), 401
+        
+        if not user.confirmed:
+            return jsonify({'success': False, 'message': 'Please confirm your email before logging in.'}), 403
+        
+        # Create access token
+        access_token = create_access_token(identity=email)
+        
+        print(access_token)
+        
+        return jsonify({
+            'success': True,
+            'message': 'Login successful.',
+            'access_token': access_token,
+            'user': {
+                'email': user.email,
+                'name': user.name
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': 'Login failed. Please try again.'}), 500
 
 # Entry point of frontend serve
 @app.route('/')
