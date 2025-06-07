@@ -3,7 +3,9 @@ from flask_cors import CORS
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 import bcrypt
 import json
-
+from datetime import datetime, timedelta
+import uuid
+import random
 
 from config import Config
 from models import db, User, Report, SearchHistory
@@ -31,6 +33,67 @@ def hash_password(password):
 
 def verify_password(password, password_hash):
     return bcrypt.checkpw(password.encode('utf-8'), password_hash.encode('utf-8'))
+
+def generate_mock_report(query, user_email):
+    """Generate mock report data for demonstration purposes"""
+    report_id = f"RPT-{datetime.now().strftime('%Y%m%d')}-{random.randint(1000, 9999)}"
+    
+    # Mock findings based on query
+    mock_findings = [
+        {
+            "source": "LinkedIn",
+            "category": "Professional",
+            "info": f"Professional profile found for query: {query}",
+            "risk": "low",
+            "timestamp": (datetime.now() - timedelta(days=random.randint(1, 365))).strftime("%Y-%m-%d"),
+            "url": "linkedin.com/in/example"
+        },
+        {
+            "source": "Twitter",
+            "category": "Social Media",
+            "info": "Public posts mentioning personal information",
+            "risk": "medium",
+            "timestamp": (datetime.now() - timedelta(days=random.randint(1, 180))).strftime("%Y-%m-%d"),
+            "url": "twitter.com/example"
+        },
+        {
+            "source": "Data Breach Database",
+            "category": "Security",
+            "info": "Email found in previous data breach",
+            "risk": "high",
+            "timestamp": (datetime.now() - timedelta(days=random.randint(180, 730))).strftime("%Y-%m-%d"),
+            "url": "N/A"
+        }
+    ]
+    
+    risk_counts = {"high": 0, "medium": 0, "low": 0}
+    for finding in mock_findings:
+        risk_counts[finding["risk"]] += 1
+    
+    return {
+        "report_id": report_id,
+        "user": user_email,
+        "query": query,
+        "generated_at": datetime.utcnow().isoformat() + 'Z',
+        "status": "completed",
+        "executive_summary": f"Digital footprint analysis for '{query}' reveals {len(mock_findings)} information pieces across multiple platforms with {risk_counts['high']} high-risk items requiring attention.",
+        "risk_distribution": risk_counts,
+        "detailed_findings": mock_findings,
+        "recommendations": [
+            "Review privacy settings on social media accounts",
+            "Consider changing passwords for compromised accounts",
+            "Monitor credit reports for suspicious activity",
+            "Enable two-factor authentication where possible"
+        ],
+        "source_distribution": {
+            "Social Media": random.randint(3, 8),
+            "Professional Networks": random.randint(1, 4),
+            "Public Records": random.randint(2, 6),
+            "News/Articles": random.randint(0, 3),
+            "Data Breaches": random.randint(0, 2),
+            "Forums/Blogs": random.randint(1, 5)
+        }
+    }
 
 # API Routes
 @app.route('/api/register', methods=['POST'])
