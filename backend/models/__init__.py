@@ -43,3 +43,18 @@ class Report(db.Model):
             'recommendations': json.loads(self.recommendations) if self.recommendations else [],
             'source_distribution': json.loads(self.source_distribution) if self.source_distribution else {}
         }
+
+class SearchHistory(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    query = db.Column(db.Text, nullable=False)
+    report_id = db.Column(db.String(50), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'query': self.query,
+            'report_id': self.report_id,
+            'created_at': self.created_at.isoformat() + 'Z'
+        }
