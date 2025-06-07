@@ -1,9 +1,12 @@
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
-from flask_jwt_extended import JWTManager, create_access_token
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
+import bcrypt
+import json
+
 
 from config import Config
-from models import db, User
+from models import db, User, Report, SearchHistory
 
 def create_app():
     app = Flask(__name__)
@@ -107,6 +110,57 @@ def login():
         
     except Exception as e:
         return jsonify({'success': False, 'message': 'Login failed. Please try again.'}), 500
+
+
+@app.route('/api/search', methods=['POST'])
+@jwt_required()
+def search():
+    try:
+        current_user_email = get_jwt_identity()
+        user = User.query.filter_by(email=current_user_email).first()
+        
+        if not user:
+            return jsonify({'success': False, 'message': 'User not found.'}), 404
+        
+        data = request.json
+        query = data.get('query', '').strip()
+        
+        if not query:
+            return jsonify({'success': False, 'message': 'Search query is required.'}), 400
+        
+        # Generate mock report (in real app: trigger actual scraping/analysis)
+        report_data = generate_mock_report(query, current_user_email)
+        
+        # Save report to database
+        new_report = Report(
+            report_id=report_data['report_id'],
+            user_id=user.id,
+            query=query,
+            status='completed',
+            executive_summary=report_data['executive_summary'],
+            risk_distribution=json.dumps(report_data['risk_distribution']),
+            detailed_findings=json.dumps(report_data['detailed_findings']),
+            recommendations=json.dumps(report_data['recommendations']),
+            source_distribution=json.dumps(report_data['source_distribution'])
+        )
+        
+        db.session.add(new_report)
+        
+        # Add to search history
+        search_history = SearchHistory(
+            user_id=user.id,
+            query=query,
+            report_id=report_data['report_id']
+        )
+        
+        db.session.add(search_history)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'report': report_data})
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': 'Search failed. Please try again.'}), 500
 
 # Entry point of frontend serve
 @app.route('/')
