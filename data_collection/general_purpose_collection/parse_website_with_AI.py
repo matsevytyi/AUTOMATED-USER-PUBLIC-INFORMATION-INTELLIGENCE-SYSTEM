@@ -1,10 +1,9 @@
-import sys
-import os
-sys.path.append(os.path.abspath(os.path.dirname(__file__)+"/../../../../"))
-
 import re
-import json
 
+import os
+import sys
+
+sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 from AI_crawler_service import crawler_service
 
 def smart_parse_website(url, user_query):
@@ -61,73 +60,3 @@ def answer_to_json(raw_text):
     result = re.sub(r'\(javascript:void\\\(0\\\);\)', '', result)
 
     return result
-
-#smart_parse_website(["https://www.nist.gov/itl/smallbusinesscyber/guidance-topic/phishing", "https://www.nist.gov/itl/smallbusinesscyber"], "phishing")
-
-# example of FIT data retrieved based on phishing
-
-"""
-[Phishing](https://www.nist.gov/itl/smallbusinesscyber/guidance-topic/phishing)
-# Phishing
-Protecting Your Small Business: Phishing
-Phishing is the use of convincing emails or other messages to trick us into opening harmful links or downloading malicious software. These messages are often disguised as a trusted source, such as your bank, credit card company, or even a leader within your own business.
-**How to Spot a Phish**
-Artificial intelligence (AI) can now be used to craft increasingly convincing phishing attacks, so it is more imperative than ever to take a second, or third, look at any message requesting you to take action—such asking you to click a link, download a file, transfer funds, log into an account, or submit sensitive information.What to look out for:
-* Teach employees how to spot and report a phish when they have fallen victim or think they have fallen victim to a phishing attack.
-* Don’t engage with the sender, and do not click any link in the email (including unsubscribe). Just delete the message. You can report phishing crimes to the FBI’s Internet Crime Complaint Center.
-* Deploy and maintain anti-virus software – if the phishing attack aims to install malware on your computer, up-to-date anti-virus software may help prevent the malware from installing.
-* Utilize email filters – many email services have configurable filters that can help prevent many phishing messages from ever reaching your employees’ mailboxes.
-**What should I do if I think I’ve been a victim of a phishing attack?**
-* **Contact the fraud department of the breached account** – If the phishing attack compromised your company’s account at a financial institution, contact the bank immediately to report the incident. Monitor for unauthorized transactions to the account. If a personal account was involved, contact the 3 major credit bureaus to enable fraud alerts.
-* Are we regularly training employees to raise their awareness of phishing threats?
-* Do our employees know how to report if they think they have fallen victim to a phishing attack?
-* NIST Human-Centered Cybersecurity Phishing Resources:[https://csrc.nist.gov/projects/human-centered-cybersecurity/research-areas/phishing](https://csrc.nist.gov/projects/human-centered-cybersecurity/research-areas/phishing)
-* Recognize and Report Phishing (Cybersecurity and Infrastructure Security Agency)[https://www.cisa.gov/secure-our-world/recognize-and-report-phishing](https://www.cisa.gov/secure-our-world/recognize-and-report-phishing)
-"""
-
-# example of parsed data
-
-"""
-{
-    "name": "Phishing",
-    "link": "https://www.nist.gov/itl/smallbusinesscyber/guidance-topic/phishing",
-    "title": "Phishing",
-    "description": "Protecting Your Small Business: Phishing\nPhishing is the use of convincing emails or other messages to trick us into opening harmful links or downloading malicious software.",
-    "sections": [
-        {
-            "heading": "How to Spot a Phish",
-            "content": [
-                "* AI can now be used to craft increasingly convincing phishing attacks...",
-                "* Teach employees how to spot and report a phish...",
-                "* Don\u2019t engage with the sender, and do not click any link...",
-                "* Deploy and maintain anti-virus software...",
-                "* Utilize email filters..."
-            ]
-        },
-        {
-            "heading": "What should I do if I think I\u2019ve been a victim of a phishing attack?",
-            "content": [
-                "* Contact the fraud department of the breached account...",
-                "* Are we regularly training employees...",
-                "* Do our employees know how to report phishing attacks?",
-                "* NIST Human-Centered Cybersecurity Phishing Resources [https://csrc.nist.gov/projects/human-centered-cybersecurity/research-areas/phishing](https://csrc.nist.gov/projects/human-centered-cybersecurity/research-areas/phishing)",
-                "* Recognize and Report Phishing (CISA) [https://www.cisa.gov/secure-our-world/recognize-and-report-phishing](https://www.cisa.gov/secure-our-world/recognize-and-report-phishing)"
-            ]
-        }
-    ],
-    "resources": [
-        {
-            "name": "Phishing",
-            "link": "https://www.nist.gov/itl/smallbusinesscyber/guidance-topic/phishing"
-        },
-        {
-            "name": "https://csrc.nist.gov/projects/human-centered-cybersecurity/research-areas/phishing",
-            "link": "https://csrc.nist.gov/projects/human-centered-cybersecurity/research-areas/phishing"
-        },
-        {
-            "name": "https://www.cisa.gov/secure-our-world/recognize-and-report-phishing",
-            "link": "https://www.cisa.gov/secure-our-world/recognize-and-report-phishing"
-        }
-    ]
-}
-"""
