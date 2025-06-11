@@ -13,6 +13,18 @@ from typing import List, Tuple
 
 model_name = "Davlan/bert-base-multilingual-cased-ner-hrl"
 nlp = pipeline("ner", model=model_name, grouped_entities=True)
+categories_and_weights = {}
+
+CATEGORY_WEIGHTS = {
+    'contact_info': 9,
+    'financial_info': 10,
+    'professional': 5,
+    'location': 9,
+    'social_connections': 5,
+    'public_statement': 5,
+    'personal_identifier': 10,
+}
+
 
 def parse_search_results_to_information_pieces(data, report_id, db):
     """
@@ -20,9 +32,9 @@ def parse_search_results_to_information_pieces(data, report_id, db):
     """
     information_pieces = []
 
+    # obtain source ids
     web_search_source_id = get_or_create_source(db=db, name="Web Search")
     platform_scraping_source_id = get_or_create_source(db=db, name="Social Media")
-    
     
     # flatten the  structure and process each item
     for sublist in data:
@@ -31,13 +43,13 @@ def parse_search_results_to_information_pieces(data, report_id, db):
             for item in sublist:
                 if isinstance(item, str) and item.strip():
                     # simple string - facebook scraping
-                    info_piece = multiple_create_string_information_piece(item, web_search_source_id, report_id)
+                    info_piece = multiple_create_string_information_piece(item, web_search_source_id, report_id, db)
                     if info_piece:
                         information_pieces.extend(info_piece)
                         
                 elif isinstance(item, dict):
                     #  structured search results - general web search
-                    info_piece = multiple_create_dict_information_piece(item, platform_scraping_source_id, report_id)
+                    info_piece = multiple_create_dict_information_piece(item, platform_scraping_source_id, report_id, db)
                     if info_piece:
                         information_pieces.extend(info_piece)
     
@@ -51,7 +63,7 @@ def parse_search_results_to_information_pieces(data, report_id, db):
 
 # helper conversion functions
 
-def multiple_create_string_information_piece(content, source_id, report_id) -> List[InformationPiece]:
+def multiple_create_string_information_piece(content, source_id, report_id, db) -> List[InformationPiece]:
     
     """Create InformationPiece from string content"""
     
@@ -61,13 +73,17 @@ def multiple_create_string_information_piece(content, source_id, report_id) -> L
     
     for item in extracted_content:
         if len(item[0]) > 0:
-            info_piece = create_string_information_piece(item[0], source_id, report_id, category_id=len(item[1])) # TODO: replace len(item[1]) with actual matchrd id done in the front
+            
+            category_id, weight = get_or_create_category(db, name=item[1])
+            
+            info_piece = create_string_information_piece(item[0], source_id, report_id, category_id=category_id, relevance_score=weight)
+            
             if info_piece:
                 result.append(info_piece)
     
     return result
 
-def multiple_create_dict_information_piece(item_dict, source_id, report_id):
+def multiple_create_dict_information_piece(item_dict, source_id, report_id, db):
     """Create InformationPiece from dictionary data"""
     
     result = []
@@ -86,20 +102,25 @@ def multiple_create_dict_information_piece(item_dict, source_id, report_id):
     
     for item in extracted_content:
         if len(item[0]) > 0:
-            info_piece = create_string_information_piece(item[0], source_id, report_id, category_id=len(item[1]), source=link) # TODO: replace len(item[1]) with actual matchrd id done in the front
+            
+            # get/create category_id on the fly
+            category_id, weight = get_or_create_category(db, name=item[1])
+            
+            info_piece = create_string_information_piece(item[0], source_id, report_id, category_id=category_id, relevance_score=weight, source=link)
             if info_piece:
                 result.append(info_piece)
     
     return result
     
 
-def create_string_information_piece(content, source_id, report_id, category_id=None, source="facebook.com"):
+def create_string_information_piece(content, source_id, report_id, category_id=None, relevance_score=0, source="facebook.com"):
     """Create InformationPiece from string content"""
     
     return InformationPiece(
         report_id=report_id,
         source_id=source_id,
         category_id=category_id,
+        relevance_score=relevance_score,
         source=source,
         content=content.strip(),
         created_at=datetime.utcnow()
@@ -163,15 +184,39 @@ def extract_entities_from_data(datapiece: str) -> List[Tuple[str, str]]:
     if re.search(r'\b(said|stated|tweeted|posted|commented)\b', datapiece, re.IGNORECASE):
         relevant_data.append((datapiece, 'public_statement'))
 
-    # 8. Social connections (e.g., mentioned names or family roles), organisations
-    names = re.findall(r'\b[A-Z][a-z]+ [A-Z][a-z]+\b', datapiece)
-    relevant_data.extend([(name, 'person') for name in names])
-
     # 9. Other personal identifiers (passport, ID, etc. — extend as needed)
     identifiers = re.findall(r'\bID[:\s]*\d+|passport[:\s]*\w+\d+', datapiece, re.IGNORECASE)
     relevant_data.extend([(id_val, 'personal_identifier') for id_val in identifiers])
 
     return relevant_data
+
+
+# helper function to handle new catefories added/obtained on the fly
+def get_or_create_category(db, name, description=None):
+    """
+    Get existing category (from cache if available) or create a new one if it doesn't exist.
+    Returns: (category_id, weight)
+    """
+    if name in categories_and_weights:
+        return categories_and_weights[name]
+
+    category = db.session.query(InformationCategory).filter_by(name=name).first()
+
+    if category is None:
+        
+        weight = CATEGORY_WEIGHTS.get(name, 0.5)
+        
+        category = InformationCategory(
+            name=name,
+            description=description or f"Auto-created category: {name}",
+            weight=weight
+        )
+        db.session.add(category)
+        db.session.flush()  # So we can access category.id and category.weight
+
+    # Update cache
+    categories_and_weights[name] = (category.id, category.weight)
+    return category.id, category.weight
 
 # helper function to handle new sources additions on the fly
 def get_or_create_source(db, name, description=None):
