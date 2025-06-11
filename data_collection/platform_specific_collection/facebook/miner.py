@@ -9,7 +9,9 @@ import time
 import random
 import json
 import os
+import sys
 
+sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 import process_data as pdt
 
 class FacebookScraper:
@@ -47,6 +49,50 @@ class FacebookScraper:
             
         self.scraper.refresh()
         time.sleep(3)
+        
+    def extract_and_filter_profiles(self, links_soup):
+        profile_links = []
+
+        for href in links_soup:
+            if "facebook.com/profile.php?id=" in href:
+                profile_links.append(href)
+            elif (
+                "facebook.com/" in href
+                and "facebook.com/groups/" not in href
+                and "facebook.com/control_panel/" not in href
+                and "facebook.com/reel" not in href
+                and "facebook.com/notifications" not in href
+                and "facebook.com/pages/" not in href
+                and "?notif_id=" not in href
+                and "/posts/" not in href
+                and "ref=notif" not in href
+            ):
+                profile_links.append(href)
+
+        return list(set(profile_links))
+        
+    def obtain_profiles(self, user_name_surname):
+        
+        url = f"https://www.facebook.com/search/people/?q={user_name_surname}"
+        
+        print(url)
+        
+        self._apply_cookies(url)
+        last_height = self.scraper.execute_script("return document.body.scrollHeight")
+        soup = BeautifulSoup(self.scraper.page_source, 'html.parser')
+        
+        print(url)
+        
+        links = []
+
+        for a_tag in soup.find_all("a", href=True):
+            
+            href = a_tag['href']
+            links.append(href)
+        
+        profile_links = self.extract_and_filter_profiles(links)
+        
+        return list(set(profile_links))
 
     def scrape_page(self, url, amount_of_posts=50, human=True):
         self._apply_cookies(url)
@@ -54,7 +100,7 @@ class FacebookScraper:
 
         last_height = self.scraper.execute_script("return document.body.scrollHeight")
         for i in range(amount_of_posts):
-            pause = random.uniform(1.1, 1.2) if human else random.uniform(0.4, 0.5)
+            pause = random.uniform(1.7, 1.1) if human else random.uniform(0.4, 0.5)
             self.scraper.execute_script("window.scrollTo(0, document.body.scrollHeight);")
             time.sleep(pause)
 
@@ -93,41 +139,44 @@ class FacebookScraper:
     def close(self):
         self.scraper.quit()
 
-    def search_profile(self, profile_url, amount_of_posts=50):
-        return self.scrape_page(url=profile_url, amount_of_posts=amount_of_posts)
+    def search_profile(self, profile_url, amount_of_posts=50, human=True):
+        return self.scrape_page(url=profile_url, amount_of_posts=amount_of_posts, human=human)
 
-    def search_request(self, query, amount_of_posts=50):
-        url = f"https://www.facebook.com/search/top?q={query}"
-        return self.scrape_page(url=url, amount_of_posts=amount_of_posts)
+    def search_request(self, query, amount_of_posts=50, human=True):
+        url = f"https://www.facebook.com/search/posts/?q={query}"
+        return self.scrape_page(url=url, amount_of_posts=amount_of_posts, human=human)
 
 if __name__ == '__main__':
     # Example arguments (replace with argparse or CLI input in real usage)
-    url = "https://www.facebook.com/search/top?q=Андрій Мацевитий"
-    amount_to_scrape = 50
-    recursive_depth = 0
+    # url = "https://www.facebook.com/search/posts/?q=Андрій Мацевитий"
+    # amount_to_scrape = 50
+    # recursive_depth = 0
 
     fb = FacebookScraper(headless=False)
 
-    print("Scraping posts...")
-    posts = fb.scrape_page(url, amount_of_posts=amount_to_scrape)
+    # print("Scraping posts...")
+    # #posts = fb.scrape_page(url, amount_of_posts=amount_to_scrape)
+    posts = fb.obtain_profiles("Andrii Matsevytyi")
 
     fb.close()
+    print(posts)
+    
 
-    print("Processing posts...")
+    # print("Processing posts...")
 
-    summary = pdt.generate_summary(posts)
-    key_info = pdt.extract_key_info(posts)
+    # summary = pdt.generate_summary(posts)
+    # key_info = pdt.extract_key_info(posts)
 
-    print("\nSummary:")
-    print(summary)
+    # print("\nSummary:")
+    # print(summary)
 
-    print("\nKey Info:")
-    print(key_info)
+    # print("\nKey Info:")
+    # print(key_info)
 
-    if recursive_depth > 0:
-        print("Running recursively...")
-        for i in range(recursive_depth):
-            print(f"Iteration {i+1}...")
-            time.sleep(3)
-            # You can re-use fb.search_profile or search_request with new arguments
-            print("No information found, stopping recursion.")
+    # if recursive_depth > 0:
+    #     print("Running recursively...")
+    #     for i in range(recursive_depth):
+    #         print(f"Iteration {i+1}...")
+    #         time.sleep(3)
+    #         # You can re-use fb.search_profile or search_request with new arguments
+    #         print("No information found, stopping recursion.")
