@@ -161,7 +161,7 @@ async function searchReport(query) {
         },
         body: JSON.stringify({ query })
     });
-    return await response.json();
+    return response.json();
 }
 
 async function getHistory() {
@@ -554,41 +554,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 displayReport(response.report);
                 loadSearchHistory();
                 showNotification('Report generated successfully', 'success');
+
+                hideLoading();
+                setButtonLoading(submitBtn, false);
+
             } else {
                 showNotification(response.message, 'error');
             }
             
-            // try {
-
-            //     const response = await fetch('/api/search', {
-            //         method: 'POST',
-            //         headers: {
-            //             'Content-Type': 'application/json',
-            //             'Authorization': 'Bearer ' + AppState.jwt  // JWT from login
-            //         },
-            //         body: JSON.stringify({ query: query })
-            //     }).then(res => res.json());
-
-                
-            //     // Add to search history
-            //     AppState.searchHistory.unshift(response.report);
-                
-            //     // Display the report
-            //     displayReport(response.report);
-                
-            //     // Update search history display
-            //     loadSearchHistory();
-                
-            //     // Clear the form
-            //     queryField.value = '';
-                
-            //     showNotification('Report generated successfully', 'success');
-            // } catch (error) {
-            //     showNotification(error.message, 'error');
-            // } finally {
-            //     setButtonLoading(submitBtn, false);
-            //     hideLoading();
-            // }
         });
     }
     
