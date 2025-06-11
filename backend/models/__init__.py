@@ -59,8 +59,33 @@ class SearchHistory(db.Model):
             'created_at': self.created_at.isoformat() + 'Z'
         }
 
+class InformationPiece(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    report_id = db.Column(db.String(50), db.ForeignKey('report.report_id'), nullable=False)
+    
+    category_id = db.Column(db.Integer, db.ForeignKey('information_category.id'), nullable=False)
+    source_id = db.Column(db.Integer, db.ForeignKey('discover_source.id'), nullable=False)
+    
+    source = db.Column(db.Text, nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    
+    relevance_score = db.Column(db.Float, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    is_verified_by_user = db.Column(db.Boolean, default=False)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'report_id': self.report_id,
+            'category_id': self.category_id,
+            'source_id': self.source_id,
+            'source': self.source,
+            'content': self.content,
+            'relevance_score': self.relevance_score,
+            'created_at': self.created_at.isoformat() + 'Z'
+        }
 
-class Category(db.Model):
+class InformationCategory(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text, nullable=True)
@@ -74,7 +99,7 @@ class Category(db.Model):
             'weight': self.weight
         }
         
-class Source(db.Model):
+class DiscoverSource(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text, nullable=True)
