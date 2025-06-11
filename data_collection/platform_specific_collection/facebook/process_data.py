@@ -1,6 +1,4 @@
-#from transformers import pipeline
 import re
-from datetime import datetime
 from collections import Counter
 import spacy
 nlp = spacy.load("en_core_web_sm")

@@ -74,14 +74,10 @@ class FacebookScraper:
     def obtain_profiles(self, user_name_surname):
         
         url = f"https://www.facebook.com/search/people/?q={user_name_surname}"
-        
-        print(url)
-        
+                
         self._apply_cookies(url)
         last_height = self.scraper.execute_script("return document.body.scrollHeight")
         soup = BeautifulSoup(self.scraper.page_source, 'html.parser')
-        
-        print(url)
         
         links = []
 

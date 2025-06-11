@@ -4,7 +4,7 @@ from crawl4ai.content_filter_strategy import PruningContentFilter,BM25ContentFil
 from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
 
 class CrawlerService:
-    def __init__(self, min_words_threshold=17):
+    def __init__(self, min_words_threshold=2):
         self.browser_config = BrowserConfig(
             headless=True,  
             verbose=False,
@@ -20,7 +20,7 @@ class CrawlerService:
         run_config = CrawlerRunConfig(
             cache_mode=CacheMode.ENABLED if enable_cache else CacheMode.DISABLED,
             markdown_generator=DefaultMarkdownGenerator(
-                content_filter=BM25ContentFilter(user_query=user_query, bm25_threshold=0.97)
+                content_filter=BM25ContentFilter(user_query=user_query, bm25_threshold=0.33)
             ),
         )
         
