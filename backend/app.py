@@ -9,8 +9,8 @@ from flask_jwt_extended import JWTManager, create_access_token, jwt_required, ge
 import bcrypt
 import json
 from datetime import datetime, timedelta
-import uuid
-import random
+
+from scheduled import start_scheduler
 
 from config import Config
 from models import db, User, Report, SearchHistory
@@ -29,6 +29,8 @@ def create_app():
     db.init_app(app)
     jwt = JWTManager(app)
     CORS(app)
+    
+    start_scheduler(db)
     
     # Create tables
     with app.app_context():
