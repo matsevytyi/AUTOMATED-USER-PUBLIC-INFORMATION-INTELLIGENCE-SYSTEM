@@ -43,13 +43,13 @@ def parse_search_results_to_information_pieces(data, report_id, db):
             for item in sublist:
                 if isinstance(item, str) and item.strip():
                     # simple string - facebook scraping
-                    info_piece = multiple_create_string_information_piece(item, web_search_source_id, report_id, db)
+                    info_piece = multiple_create_string_information_piece(item, platform_scraping_source_id, report_id, db)
                     if info_piece:
                         information_pieces.extend(info_piece)
                         
                 elif isinstance(item, dict):
                     #  structured search results - general web search
-                    info_piece = multiple_create_dict_information_piece(item, platform_scraping_source_id, report_id, db)
+                    info_piece = multiple_create_dict_information_piece(item, web_search_source_id, report_id, db)
                     if info_piece:
                         information_pieces.extend(info_piece)
     
