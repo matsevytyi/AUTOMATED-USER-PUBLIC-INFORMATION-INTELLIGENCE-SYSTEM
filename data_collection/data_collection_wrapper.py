@@ -1,15 +1,12 @@
-from platform_specific_collection.darkdump import darkdump
-from platform_specific_collection.facebook.miner import FacebookScraper
-from general_purpose_collection.collect_general_purpose_data import get_website_knowledge as general_scrape
+import os
+import sys
 
-# TODO: verify it works
-# cache user-related profiles
-# extract data on data processing
-# make unified formatting
-# prompt llm on recommendations
-# connect end-to-end with frontend
+models_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../'))
+sys.path.append(models_path)
 
-# data verification platform (?) (real or mock)?
+from backend.data_collection.platform_specific_collection.darkdump import darkdump
+from backend.data_collection.platform_specific_collection.facebook.miner import FacebookScraper
+from backend.data_collection.general_purpose_collection.collect_general_purpose_data import get_website_knowledge as general_scrape
 
 fb_engine = FacebookScraper(headless=True)
 
@@ -41,5 +38,5 @@ def collect_data(search_request, use_general=True, use_facebook=False, use_darkn
     
     return results
 
-a = collect_data("Андрій Мацевитий", use_general=True,use_darknet=True, use_facebook=True)
-print(a)
+# a = collect_data("Андрій Мацевитий", use_general=True,use_darknet=True, use_facebook=True)
+# print(a)
