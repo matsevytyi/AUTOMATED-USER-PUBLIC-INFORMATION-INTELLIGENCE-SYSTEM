@@ -2,6 +2,8 @@ from datetime import datetime
 import random
 from typing import List
 
+import json
+
 import os
 import sys
 
@@ -40,6 +42,8 @@ def generate_complete_report(db, report_id: str, information_pieces: List[Inform
     if not report:
         raise ValueError(f"Report {report_id} not found")
     
+    print("gpt report", report.to_dict())
+    
     # Process information pieces into report format
     detailed_findings = []
     risk_counts = {"high": 0, "medium": 0, "low": 0}
@@ -72,6 +76,8 @@ def generate_complete_report(db, report_id: str, information_pieces: List[Inform
     # Calculate overall risk score
     overall_risk_score = calculate_overall_risk_score(risk_counts, len(information_pieces))
     
+    print("overall risk score", overall_risk_score)
+    
     # Generate executive summary
     executive_summary = generate_executive_summary(
         report.user_query, 
@@ -80,8 +86,12 @@ def generate_complete_report(db, report_id: str, information_pieces: List[Inform
         overall_risk_score
     )
     
+    print("summary", executive_summary)
+    
     # Generate recommendations
     recommendations = generate_recommendations(risk_counts, source_counts)
+    
+    print("recommendations", recommendations)
     
     # Create final report structure
     final_report = {
@@ -101,10 +111,14 @@ def generate_complete_report(db, report_id: str, information_pieces: List[Inform
     
     # Update report status in database
     report.status = "completed"
-    report.summary = executive_summary
-    report.risk_score = overall_risk_score
+    report.executive_summary = executive_summary
+    report.risk_distribution = json.dumps(risk_counts)
+    report.detailed_findings = json.dumps(detailed_findings)
+    report.recommendations = json.dumps(recommendations)
+    report.source_distribution = json.dumps(source_counts)
     
-    print("updating report in db")
+    print("updating report in db with id ", report_id)
+    db.session.merge(report)
     db.session.commit()
     
     return final_report
@@ -117,7 +131,7 @@ def get_category_name(db, category_id: int) -> str:
     category = db.session.query(InformationCategory).filter_by(id=category_id).first()
     return category.name if category else "Unknown Category"
 
-def get_report(db, report_id: int) -> str:
+def get_report(db, report_id: int) -> Report:
     """Get source name from ID"""
     source = db.session.query(Report).filter_by(report_id=report_id).first()
     return source
