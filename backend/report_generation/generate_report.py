@@ -7,7 +7,7 @@ import sys
 
 models_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../'))
 sys.path.append(models_path)
-from backend.models import Report, DiscoverSource, InformationCategory, InformationPiece
+from backend.models import User, Report, DiscoverSource, InformationCategory, InformationPiece
 
 def init_report(db, user_id: str, query: str) -> str:
     """Initialize a new report and save it to database"""
@@ -17,11 +17,12 @@ def init_report(db, user_id: str, query: str) -> str:
     report = Report(
         report_id=report_id,
         user_id=user_id,
-        query=query,
+        user_query=query,
         status="processing",
-        created_at=datetime.utcnow()
+        generated_at=datetime.utcnow()
     )
     
+    print("adding report to db with id ", report_id)
     db.session.add(report)
     db.session.commit()
     
@@ -33,7 +34,9 @@ def generate_complete_report(db, report_id: str, information_pieces: List[Inform
     """Generate complete report from InformationPiece objects"""
     
     # Get the report from database
-    report = Report.query.filter_by(report_id=report_id).first()
+    print("querying report with id", report_id)
+    report = get_report(db=db, report_id=report_id)
+    user = get_user(db, report.user_id)
     if not report:
         raise ValueError(f"Report {report_id} not found")
     
@@ -44,8 +47,8 @@ def generate_complete_report(db, report_id: str, information_pieces: List[Inform
     
     for piece in information_pieces:
         # Get category and source names
-        category_name = get_category_name(piece.category_id)
-        source_name = get_source_name(piece.source_id)
+        category_name = get_category_name(db, piece.category_id)
+        source_name = get_source_name(db, piece.source_id)
         
         # Determine risk level based on category and content
         risk_level = determine_risk_level(piece, category_name)
@@ -71,7 +74,7 @@ def generate_complete_report(db, report_id: str, information_pieces: List[Inform
     
     # Generate executive summary
     executive_summary = generate_executive_summary(
-        report.query, 
+        report.user_query, 
         len(information_pieces), 
         risk_counts, 
         overall_risk_score
@@ -83,8 +86,8 @@ def generate_complete_report(db, report_id: str, information_pieces: List[Inform
     # Create final report structure
     final_report = {
         "report_id": report_id,
-        "user": report.user_email,
-        "query": report.query,
+        "user": user.email,
+        "query": report.user_query,
         "generated_at": datetime.utcnow().isoformat() + 'Z',
         "status": "completed",
         "overall_risk_score": round(overall_risk_score, 2),
@@ -100,21 +103,33 @@ def generate_complete_report(db, report_id: str, information_pieces: List[Inform
     report.status = "completed"
     report.summary = executive_summary
     report.risk_score = overall_risk_score
+    
+    print("updating report in db")
     db.session.commit()
     
     return final_report
 
-def get_category_name(category_id: int) -> str:
+def get_category_name(db, category_id: int) -> str:
     """Get category name from ID"""
     if not category_id:
         return "Uncategorized"
     
-    category = InformationCategory.query.get(category_id)
+    category = db.session.query(InformationCategory).filter_by(id=category_id).first()
     return category.name if category else "Unknown Category"
 
-def get_source_name(source_id: int) -> str:
+def get_report(db, report_id: int) -> str:
     """Get source name from ID"""
-    source = DiscoverSource.query.get(source_id)
+    source = db.session.query(Report).filter_by(report_id=report_id).first()
+    return source
+
+def get_user(db, user_id: int) -> str:
+    """Get source name from ID"""
+    source = db.session.query(User).filter_by(id=user_id).first()
+    return source
+
+def get_source_name(db, source_id: int) -> str:
+    """Get source name from ID"""
+    source = db.session.query(DiscoverSource).filter_by(id=source_id).first()
     return source.name if source else "Unknown Source"
 
 def determine_risk_level(piece: InformationPiece, category_name: str) -> str:
