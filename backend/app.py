@@ -1,6 +1,7 @@
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__))))
 
 
 from flask import Flask, request, jsonify, render_template
@@ -46,6 +47,13 @@ app = create_app()
 #     result = parse_search_results_to_information_pieces(a, report_id=0, db=db)
 #     print("======================RESULT======================")
 #     print(result)
+
+@app.after_request
+def add_no_cache_headers(response):
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 # Helper functions
 def hash_password(password):
@@ -272,5 +280,6 @@ def health_check():
 def home():
     return render_template('index.html')
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run(debug=True, host='0.0.0.0', port=5000)
+
