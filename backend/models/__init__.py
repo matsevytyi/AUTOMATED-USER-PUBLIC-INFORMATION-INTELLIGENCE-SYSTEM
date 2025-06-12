@@ -20,7 +20,7 @@ class Report(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     report_id = db.Column(db.String(50), unique=True, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    query = db.Column(db.Text, nullable=False)
+    user_query = db.Column(db.Text, nullable=False)
     status = db.Column(db.String(20), default='pending')
     generated_at = db.Column(db.DateTime, default=datetime.utcnow)
     
@@ -34,7 +34,7 @@ class Report(db.Model):
     def to_dict(self):
         return {
             'report_id': self.report_id,
-            'query': self.query,
+            'query': self.user_query,
             'status': self.status,
             'generated_at': self.generated_at.isoformat() + 'Z',
             'executive_summary': self.executive_summary,
@@ -47,14 +47,14 @@ class Report(db.Model):
 class SearchHistory(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    query = db.Column(db.Text, nullable=False)
+    user_query = db.Column(db.Text, nullable=False)
     report_id = db.Column(db.String(50), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     def to_dict(self):
         return {
             'id': self.id,
-            'query': self.query,
+            'query': self.user_query,
             'report_id': self.report_id,
             'created_at': self.created_at.isoformat() + 'Z'
         }
@@ -63,13 +63,13 @@ class InformationPiece(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     report_id = db.Column(db.String(50), db.ForeignKey('report.report_id'), nullable=False)
     
-    category_id = db.Column(db.Integer, db.ForeignKey('information_category.id'), nullable=False)
+    category_id = db.Column(db.Integer, db.ForeignKey('information_category.id'), nullable=True)  # because is added later
     source_id = db.Column(db.Integer, db.ForeignKey('discover_source.id'), nullable=False)
     
     source = db.Column(db.Text, nullable=False)
     content = db.Column(db.Text, nullable=False)
     
-    relevance_score = db.Column(db.Float, nullable=False)
+    relevance_score = db.Column(db.Float, nullable=True) # because is added later
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_verified_by_user = db.Column(db.Boolean, default=False)
     
