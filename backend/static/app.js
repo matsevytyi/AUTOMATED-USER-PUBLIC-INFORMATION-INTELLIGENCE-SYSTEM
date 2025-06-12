@@ -458,10 +458,12 @@ document.addEventListener('DOMContentLoaded', function() {
             const response = await registerUser(formData);
             if (response.success) {
                 AppState.pendingUser = { email: formData.email };
+                setButtonLoading(submitBtn, false);
                 showNotification(response.message, 'success');
                 showPage('confirm');
             } else {
                 showNotification(response.message, 'error');
+                setButtonLoading(submitBtn, false);
             }
         });
     }
@@ -486,11 +488,13 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const response = await loginUser(formData);
             if (response.success) {
+                setButtonLoading(submitBtn, false);
                 showNotification(response.message, 'success');
                 showPage('dashboard');
                 await reloadSearchHistory();
             } else {
                 showNotification(response.message, 'error');
+                setButtonLoading(submitBtn, false);
             }
         });
     }
@@ -560,6 +564,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
             } else {
                 showNotification(response.message, 'error');
+                hideLoading();
+                setButtonLoading(submitBtn, false);
             }
             
         });
