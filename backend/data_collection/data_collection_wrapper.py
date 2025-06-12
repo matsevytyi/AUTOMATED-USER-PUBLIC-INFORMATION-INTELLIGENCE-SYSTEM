@@ -10,7 +10,7 @@ from backend.data_collection.general_purpose_collection.collect_general_purpose_
 
 fb_engine = FacebookScraper(headless=True)
 
-def collect_data(search_request, use_general=True, use_facebook=False, use_darknet=False):
+def collect_data(search_request, use_general=True, use_facebook=True, use_darknet=False):
     
     results = []
     

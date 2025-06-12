@@ -200,6 +200,7 @@ def get_or_create_category(db, name, description=None):
     if name in categories_and_weights:
         return categories_and_weights[name]
 
+    print(f"Creating new category: {name}")
     category = db.session.query(InformationCategory).filter_by(name=name).first()
 
     if category is None:
@@ -211,6 +212,7 @@ def get_or_create_category(db, name, description=None):
             description=description or f"Auto-created category: {name}",
             weight=weight
         )
+        print(f"Created new category: {name}")
         db.session.add(category)
         db.session.flush()  # So we can access category.id and category.weight
 
@@ -223,6 +225,7 @@ def get_or_create_source(db, name, description=None):
     """
     Get existing source or create new one if it doesn't exist
     """
+    print(f"Creating new source: {name}")
     source = db.session.query(DiscoverSource).filter_by(name=name).first()
     
     if source is None:
@@ -231,6 +234,7 @@ def get_or_create_source(db, name, description=None):
             name=name,
             description=description or f"Auto-created source: {name}"
         )
+        print(f"Created new source: {name}")
         db.session.add(source)
         db.session.flush()  # Get the ID without committing the transaction
     
