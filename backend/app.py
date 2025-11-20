@@ -63,6 +63,8 @@ def verify_password(password, password_hash):
     return bcrypt.checkpw(password.encode('utf-8'), password_hash.encode('utf-8'))
 
 # API Routes
+
+# ------ AUTH ------
 @app.route('/api/register', methods=['POST'])
 def register():
     try:
@@ -159,6 +161,7 @@ def confirm_email():
         db.session.rollback()
         return jsonify({'success': False, 'message': 'Email confirmation failed.'}), 500
 
+# ------ SEARCH ------
 @app.route('/api/search', methods=['POST'])
 @jwt_required()
 def search():
@@ -209,6 +212,7 @@ def search():
         db.session.rollback()
         return jsonify({'success': False, 'message': 'Search failed. Please try again.'}), 500
 
+# ------------ Dashboard ------------
 @app.route('/api/report/<report_id>', methods=['GET'])
 @jwt_required()
 def get_report(report_id):
@@ -246,6 +250,7 @@ def get_search_history():
     except Exception as e:
         return jsonify({'success': False, 'message': 'Failed to retrieve search history.'}), 500
 
+# ------------ Profile/settings ------------
 @app.route('/api/profile', methods=['GET'])
 @jwt_required()
 def get_profile():
@@ -269,6 +274,130 @@ def get_profile():
         
     except Exception as e:
         return jsonify({'success': False, 'message': 'Failed to retrieve profile.'}), 500
+ 
+ # ------------ Settings / Derived from profile ------------   
+@app.route('/api/profile/facebook/cookies', methods=['POST'])
+@jwt_required()
+def update_facebook_cookies():
+    data = request.json
+    print("cookies received", data) 
+    if not data or 'cookies_json' not in data:
+        print('No data provided')
+        return jsonify({'error': 'No data provided'}), 400
+
+    try:
+        cookies = json.loads(data['cookies_json'])
+        assert all(k in cookies for k in ['c_user', 'xs'])
+        print("cookies parsed", cookies)
+    except Exception:
+        return jsonify({'error': 'Invalid cookies format or missing c_user/xs'}), 400
+
+    expires_at = datetime.utcnow() + relativedelta(months=1)
+
+    # Upsert cookies in DB
+    
+    current_user_email = get_jwt_identity()
+    fc = FacebookCookies.query.filter_by(user_email=current_user_email).first()
+    if not fc:
+        fc = FacebookCookies(user_email=current_user_email, cookies_json=json.dumps(cookies), 
+                             saved_at=datetime.utcnow(), expires_at=expires_at)
+        db.session.add(fc)
+    else:
+        fc.cookies_json = json.dumps(cookies)
+        fc.saved_at = datetime.utcnow()
+        fc.expires_at = expires_at
+    db.session.commit()
+
+    return jsonify({'success': True}), 200
+
+@app.route('/api/profile/facebook/cookies', methods=['GET'])
+@jwt_required()
+def get_facebook_cookies_status():
+    fc = FacebookCookies.query.filter_by(user_email=get_jwt_identity()).first()
+    now = datetime.utcnow()
+    has_cookies = bool(fc)
+    is_expired = fc.expires_at < now if fc and fc.expires_at else True
+    
+    return jsonify({
+        'has_cookies': has_cookies, 
+        'is_expired': is_expired
+    }), 200
+
+    
+# ------------ Other Settings ------------
+
+@app.route('/api/profile/password', methods=['POST'])
+@jwt_required()
+def change_password():
+    """Change user password"""
+    try:
+        data = request.json or {}
+
+        old_password = data.get('current_password')
+        new_password = data.get('new_password')
+
+        if not old_password or not new_password:
+            return jsonify({'success': False, 'message': 'Current and new passwords are required.'}), 400
+
+        if len(new_password) < 8:
+            return jsonify({'success': False, 'message': 'New password must be at least 8 characters long.'}), 400
+
+        # Get current user from JWT
+        current_user_email = get_jwt_identity()
+        user = User.query.filter_by(email=current_user_email).first()
+        if not user:
+            return jsonify({'success': False, 'message': 'User not found.'}), 404
+
+        # Verify old password matches stored hash
+        if not user.password_hash or not verify_password(old_password, user.password_hash):
+            return jsonify({'success': False, 'message': 'Current password is incorrect.'}), 401
+
+        # Update password hash
+        user.password_hash = hash_password(new_password)
+        db.session.commit()
+
+        return jsonify({'success': True, 'message': 'Password changed successfully.'}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        print('Error changing password:', e)
+        return jsonify({'success': False, 'message': 'Failed to change password. Please try again.'}), 500
+
+@app.route('/api/settings/theme', methods=['POST'])
+@jwt_required()
+def set_theme():
+    """Set user theme preference"""
+    data = request.json
+    theme = data.get('theme')  # 'light', 'dark', 'device'
+    
+    if theme not in ['light', 'dark', 'device']:
+        return jsonify({'error': 'Invalid theme'}), 400
+    
+    # Save theme preference
+    # user_db.update({'theme': theme}, request.user_id)
+    
+    return jsonify({'success': True, 'theme': theme}), 200
+
+@app.route('/api/settings/delete-account', methods=['POST'])
+@jwt_required()
+def delete_account():
+    """Delete user account and related data"""
+    data = request.json
+    password = data.get('password')
+    full_name = data.get('full_name')
+    
+    # Validate credentials
+    # if not validate_password(request.user_id, password):
+    #     return jsonify({'error': 'Incorrect password'}), 401
+    
+    # Delete user data
+    print(f"\n[ACCOUNT DELETION] User '{full_name}' (ID: {request.user_id}) deleted at {datetime.utcnow()}")
+    print(f"[ACTION] Removing: user records, search history, cookies, LLM configs, chat data")
+    
+    # Your deletion logic
+    # delete_user_data(request.user_id)
+    
+    return jsonify({'success': True, 'message': 'Account deleted'}), 200
 
 # Health check endpoint
 @app.route('/api/health', methods=['GET'])

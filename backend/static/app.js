@@ -126,7 +126,7 @@ function updateNavigation() {
     }
 }
 
-// Main authentication functions
+// POST functions
 
 async function registerUser(formData) {
     const response = await fetch('/api/register', {
@@ -192,6 +192,20 @@ async function getReport(reportId) {
     return await response.json();
 }
 
+async function changePassword(formData) {
+    const response = await fetch('/api/profile/password', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + AppState.jwt
+        },
+        body: JSON.stringify(formData)
+    });
+    const data = await response.json();
+
+    return data;
+}
+
 
 // Authentication Util Functions
 function validateEmail(email) {
@@ -250,6 +264,50 @@ function validateRegistrationForm() {
         isValid = false;
     } else if (password !== confirmPassword) {
         showFormError('register-confirm-password', 'Passwords do not match');
+        isValid = false;
+    }
+    
+    return isValid;
+}
+
+function validatePasswordChangeForm() {
+    const current_password_field = document.getElementById('current-password');
+    const new_password_field = document.getElementById('new-password');
+    const confirm_new_password_field = document.getElementById('confirm-password');
+    
+    if (!current_password_field || !new_password_field || !confirm_new_password_field) {
+        return false;
+    }
+    
+    const current_password = current_password_field.value.trim();
+    const new_password = new_password_field.value;
+    const confirm_new_password = confirm_new_password_field.value;
+    
+    let isValid = true;
+    
+    clearAllFormErrors('register-form');
+
+    if (!current_password) {
+        showFormError('current-password', 'Current password is required');
+        isValid = false;
+    }
+    
+    if (!new_password) {
+        showFormError('new-password', 'New password is required');
+        isValid = false;
+    } else if (!validatePassword(new_password)) {
+        showFormError('new-password', 'Password must meet complexity requirements');
+        isValid = false;
+    } else if (current_password === new_password) {
+        showFormError('new-password', 'New password cannot be the same as the current password');
+        isValid = false;
+    }
+    
+    if (!confirm_new_password) {
+        showFormError('confirm-password', 'Please confirm your password');
+        isValid = false;
+    } else if (password !== confirm_new_password) {
+        showFormError('confirm-password', 'Passwords do not match');
         isValid = false;
     }
     
@@ -508,6 +566,37 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+    
+const passwordUpdateForm = document.getElementById('update-password-form');
+    if (passwordUpdateForm) {
+        passwordUpdateForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            if (!validatePasswordChangeForm()) {
+                return;
+            }
+            
+            const submitBtn = document.getElementById('update-password-btn');
+            setButtonLoading(submitBtn, true);
+            
+            const formData = {
+                current_password: document.getElementById('current-password').value.trim(),
+                new_password: document.getElementById('new-password').value.trim()
+            };
+            
+            const response = await changePassword(formData);
+            if (response.success) {
+                AppState.pendingUser = { email: formData.email };
+                setButtonLoading(submitBtn, false);
+                showNotification("Password changed successfully", 'success');
+                showPage('dashboard');
+            } else {
+                showNotification("Try Again!" + response.message, 'error');
+                setButtonLoading(submitBtn, false);
+            }
+        });
+    }
+    
     
     // Email confirmation simulation
     const simulateConfirmBtn = document.getElementById('simulate-confirm-btn');
