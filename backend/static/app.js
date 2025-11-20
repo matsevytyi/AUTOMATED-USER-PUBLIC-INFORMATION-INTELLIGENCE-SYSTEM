@@ -193,17 +193,21 @@ async function getReport(reportId) {
 }
 
 async function changePassword(formData) {
-    const response = await fetch('/api/profile/password', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + AppState.jwt
-        },
-        body: JSON.stringify(formData)
-    });
-    const data = await response.json();
-
-    return data;
+    try {
+        const response = await fetch('/api/profile/password', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + (AppState.jwt || '')
+            },
+            body: JSON.stringify(formData)
+        });
+        const data = await response.json();
+        return data;
+    } catch (err) {
+        console.error('changePassword: request failed', err);
+        return { success: false, message: 'Request failed' };
+    }
 }
 
 
@@ -284,8 +288,6 @@ function validatePasswordChangeForm() {
     const confirm_new_password = confirm_new_password_field.value;
     
     let isValid = true;
-    
-    clearAllFormErrors('register-form');
 
     if (!current_password) {
         showFormError('current-password', 'Current password is required');
@@ -306,7 +308,7 @@ function validatePasswordChangeForm() {
     if (!confirm_new_password) {
         showFormError('confirm-password', 'Please confirm your password');
         isValid = false;
-    } else if (password !== confirm_new_password) {
+    } else if (new_password !== confirm_new_password) {
         showFormError('confirm-password', 'Passwords do not match');
         isValid = false;
     }
@@ -691,12 +693,11 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const response = await changePassword(formData);
             if (response.success) {
-                AppState.pendingUser = { email: formData.email };
                 setButtonLoading(submitBtn, false);
-                showNotification("Password changed successfully", 'success');
+                showNotification(response.message || 'Password changed successfully', 'success');
                 showPage('dashboard');
             } else {
-                showNotification("Try Again!" + response.message, 'error');
+                showNotification(response.message ? ('Try Again! ' + response.message) : 'Failed to change password', 'error');
                 setButtonLoading(submitBtn, false);
             }
         });
@@ -830,6 +831,35 @@ document.addEventListener('DOMContentLoaded', function() {
         postFacebookCookies(cookiesObj);
     });
 
+    // Save interface preferences (theme/compact/notifications)
+    const saveInterfaceBtn = document.getElementById('save-interface-btn');
+    if (saveInterfaceBtn) {
+        saveInterfaceBtn.addEventListener('click', async function() {
+            // read theme
+            const themeInput = document.querySelector('input[name="theme"]:checked');
+            const theme = themeInput ? themeInput.value : 'device';
+
+            // apply locally and persist per-user
+            applyTheme(theme);
+            await persistThemeToServer(theme);
+
+            // optional: persist compact/notifications locally per-user
+            try {
+                const compact = document.getElementById('compact-view')?.checked;
+                const notif = document.getElementById('notifications-enabled')?.checked;
+                if (AppState && AppState.currentUser && AppState.currentUser.email) {
+                    const key = 'prefs:' + AppState.currentUser.email;
+                    localStorage.setItem(key, JSON.stringify({ compact: !!compact, notifications: !!notif }));
+                } else {
+                    localStorage.setItem('prefs:guest', JSON.stringify({ compact: !!compact, notifications: !!notif }));
+                }
+            } catch (e) {}
+
+            // redirect to dashboard after saving
+            showPage('dashboard');
+        });
+    }
+
     
     // Notification close button
     const notificationClose = document.getElementById('notification-close');
@@ -890,10 +920,13 @@ async function postFacebookCookies(cookiesObj) {
         });
         const data = await res.json();
         if (data.success) {
-            status.textContent = "Cookies saved!";
-            status.style.color = "var(--color-success)";
-            // Refresh status badge
-            await getFacebookCookiesStatus();
+                status.textContent = "Cookies saved!";
+                status.style.color = "var(--color-success)";
+                // Refresh status badge
+                await getFacebookCookiesStatus();
+                // Show toast and redirect after a short delay so user sees the notification
+                showNotification('Cookies saved!', 'success');
+                setTimeout(() => showPage('dashboard'), 500);
         } else {
             status.textContent = data.error || "Failed to save cookies";
             status.style.color = "var(--color-error)";
