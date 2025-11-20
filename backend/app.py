@@ -303,7 +303,66 @@ def get_profile():
         return jsonify({'success': False, 'message': 'Failed to retrieve profile.'}), 500
  
  # ------------ Settings / Derived from profile ------------   
+@app.route('/api/profile/facebook/cookies', methods=['POST'])
+@jwt_required()
+def update_facebook_cookies():
+    data = request.json
+    print("cookies received", data) 
+    if not data or 'cookies_json' not in data:
+        print('No data provided')
+        return jsonify({'error': 'No data provided'}), 400
 
+    try:
+        cookies = json.loads(data['cookies_json'])
+        assert all(k in cookies for k in ['c_user', 'xs'])
+        print("cookies parsed", cookies)
+    except Exception:
+        return jsonify({'error': 'Invalid cookies format or missing c_user/xs'}), 400
+
+    # Lightweight verification
+    try:
+        ok = FacebookCookieManager.verify_cookies_map(cookies)
+    except Exception:
+        ok = False
+        
+    print("cookies verification result:", ok)
+
+    if not ok:
+        return jsonify({'error': 'Provided cookies appear invalid or not authenticated.'}), 400
+
+    expires_at = datetime.utcnow() + relativedelta(months=1)
+
+    # Upsert cookies in DB
+    current_user_email = get_jwt_identity()
+    fc = FacebookCookies.query.filter_by(user_email=current_user_email).first()
+    if not fc:
+        fc = FacebookCookies(user_email=current_user_email, cookies_json=json.dumps(cookies), 
+                             saved_at=datetime.utcnow(), expires_at=expires_at)
+        db.session.add(fc)
+    else:
+        fc.cookies_json = json.dumps(cookies)
+        fc.saved_at = datetime.utcnow()
+        fc.expires_at = expires_at
+    db.session.commit()
+    
+    print("cookies updated", cookies)
+
+    return jsonify({'success': True}), 200
+
+@app.route('/api/profile/facebook/cookies', methods=['GET'])
+@jwt_required()
+def get_facebook_cookies_status():
+    fc = FacebookCookies.query.filter_by(user_email=get_jwt_identity()).first()
+    now = datetime.utcnow()
+    has_cookies = bool(fc)
+    is_expired = fc.expires_at < now if fc and fc.expires_at else True
+    
+    return jsonify({
+        'has_cookies': has_cookies, 
+        'is_expired': is_expired
+    }), 200
+
+    
 # ------------ Other Settings ------------
 
 @app.route('/api/profile/password', methods=['POST'])

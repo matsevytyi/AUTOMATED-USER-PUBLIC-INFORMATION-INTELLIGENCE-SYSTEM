@@ -321,9 +321,76 @@
                 </section>
                 <section id="profile-privacy" class="profile-section">
                 <!-- Privacy settings -->
-                 Privacy settings
-                 <br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+                 <h3>Facebook Data Collection</h3>
+                            <div id="facebook-status" class="status-box">
+                                <p>Status: <span id="fb-status-text">Checking...</span></p>
+                            </div>
+                            <p id="facebook-cookies-status" class="small-text" style="margin-top:8px;color:var(--color-muted)"></p>
+
+                            <div class="form-section">
+                                <h4>Add Facebook Cookies</h4>
+                                <p class="info-text">Choose one of the following methods:</p>
+
+                                <!-- Method 1: Paste JSON -->
+                                <div class="method-option">
+                                    <h5>Method 1: Paste Cookies (JSON)</h5>
+                                    <textarea id="cookies-json" placeholder='{"c_user":"123456","xs":"abc123","...":"..."}' rows="6" class="monospace"></textarea>
+                                    <button type="button" class="btn-secondary" id="paste-cookies-btn">Save Cookies from JSON</button>
+                                </div>
+                                <br>
+
+                                <!-- Method 2: Individual Cookies -->
+                                <div class="method-option">
+                                    <h5>Method 2: Enter Individual Cookies</h5>
+                                    <br>
+                                    <div class="form-group">
+                                        <label for="cookie-c-user">c_user (required)</label>
+                                        <input type="text" id="cookie-c-user" placeholder="Your FB user ID">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="cookie-xs">xs (required)</label>
+                                        <input type="text" id="cookie-xs" placeholder="Your xs token">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="cookie-c-user">datr (required)</label>
+                                        <input type="text" id="cookie-datr" placeholder="Your FB user ID">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="cookie-xs">fr (required)</label>
+                                        <input type="text" id="cookie-fr" placeholder="Your xs token">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="cookie-xs">spin (required)</label>
+                                        <input type="text" id="cookie-spin" placeholder="Your xs token">
+                                    </div>
+                                    
+                                    <button type="button" class="btn-secondary" id="save-cookies-btn">Save Individual Cookies</button>
+                                </div>
+
+                                <!-- Method 3: OAuth (Future) -->
+                                <div class="method-option">
+                                    <h5>Method 3: Connect with Facebook Account</h5>
+                                    <button type="button" class="btn-primary" id="facebook-oauth-btn" disabled>
+                                        <span>🔒 Login with Facebook</span>
+                                        <small style="display:block;font-size:0.9em;margin-top:5px;opacity:0.8;">Coming soon...</small>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Facebook Scraping Info -->
+                            <div class="info-box">
+                                <h5>📋 Example cookies.json format:</h5>
+                                <pre><code>{
+"c_user": "1234567890",
+"xs": "abcdef1234567890",
+"datr": "xyz123",
+"fr": "abc123def456",
+"spin": "123456789"
+}</code></pre>
+                                <p><small>⚠️ Keep your cookies private. Never share them publicly.</small></p>
+                            </div>
                 </section>
+                
                 <section id="profile-llm" class="profile-section">
                 <!-- LLM config -->
                  LLM cfg
