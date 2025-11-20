@@ -106,6 +106,7 @@ function updateNavigation() {
     const loginBtn = document.getElementById('nav-login-btn');
     const registerBtn = document.getElementById('nav-register-btn');
     const logoutBtn = document.getElementById('nav-logout-btn');
+    const dashboardBtn = document.getElementById('nav-dashboard-btn');
     
     if (AppState.currentUser) {
         if (loginBtn) loginBtn.classList.add('hidden');
@@ -115,6 +116,13 @@ function updateNavigation() {
         if (loginBtn) loginBtn.classList.remove('hidden');
         if (registerBtn) registerBtn.classList.remove('hidden');
         if (logoutBtn) logoutBtn.classList.add('hidden');
+        if (dashboardBtn) dashboardBtn.classList.add('hidden');
+    }
+
+    if (AppState.currentPage === 'dashboard') {
+        if (dashboardBtn) dashboardBtn.classList.add('hidden');
+    } else {
+        if (dashboardBtn && AppState.currentUser) dashboardBtn.classList.remove('hidden');
     }
 }
 
@@ -411,6 +419,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const navLoginBtn = document.getElementById('nav-login-btn');
     const navRegisterBtn = document.getElementById('nav-register-btn');
     const navLogoutBtn = document.getElementById('nav-logout-btn');
+    const navDashboardBtn = document.getElementById('nav-dashboard-btn');
     const heroLoginBtn = document.getElementById('hero-login-btn');
     const heroRegisterBtn = document.getElementById('hero-register-btn');
     const authLoginLink = document.getElementById('auth-login-link');
@@ -419,6 +428,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (navLoginBtn) navLoginBtn.addEventListener('click', () => showPage('login'));
     if (navRegisterBtn) navRegisterBtn.addEventListener('click', () => showPage('register'));
     if (navLogoutBtn) navLogoutBtn.addEventListener('click', logout);
+    if (navDashboardBtn) navDashboardBtn.addEventListener('click', () => showPage('dashboard'));
     if (heroLoginBtn) heroLoginBtn.addEventListener('click', () => showPage('login'));
     if (heroRegisterBtn) heroRegisterBtn.addEventListener('click', () => showPage('register'));
     
@@ -574,10 +584,25 @@ document.addEventListener('DOMContentLoaded', function() {
     // Profile button
     const profileBtn = document.getElementById('profile-btn');
     if (profileBtn) {
-        profileBtn.addEventListener('click', function() {
-            showNotification('Profile management coming soon', 'info');
+        // profileBtn.addEventListener('click', function() {
+        //     showNotification('Profile management coming soon', 'info');
+        // });
+
+        profileBtn.addEventListener("click", function() {
+            // Switch to the Settings main view
+            showPage('profile');
         });
     }
+
+    // Profile
+    document.querySelectorAll('.profile-tab-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const sectionID = 'profile-' + btn.dataset.section;
+            const section = document.getElementById(sectionID);
+            if(section) section.scrollIntoView({behavior: 'smooth', block: 'start'});
+        });
+    });
+
     
     // Notification close button
     const notificationClose = document.getElementById('notification-close');
