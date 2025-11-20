@@ -298,9 +298,11 @@
             </div>
 
 
-            <div class="profile-sections">
-                <div class="container">
-                <section id="profile-account" class="profile-section">
+                        <div class="profile-sections">
+                                <div class="container">
+                                <div class="card profile-card">
+                                    <div class="card__body">
+                                <section id="profile-account" class="profile-section">
                 <!-- Account form -->
                     <h3>Account Information</h3>
                     <form id="update-password-form" class="form-section">
@@ -335,6 +337,7 @@
                                 <div class="method-option">
                                     <h5>Method 1: Paste Cookies (JSON)</h5>
                                     <textarea id="cookies-json" placeholder='{"c_user":"123456","xs":"abc123","...":"..."}' rows="6" class="monospace"></textarea>
+                                    <br>
                                     <button type="button" class="btn-secondary" id="paste-cookies-btn">Save Cookies from JSON</button>
                                 </div>
                                 <br>
@@ -367,19 +370,21 @@
                                     <button type="button" class="btn-secondary" id="save-cookies-btn">Save Individual Cookies</button>
                                 </div>
 
+                                <br>
+
                                 <!-- Method 3: OAuth (Future) -->
                                 <div class="method-option">
                                     <h5>Method 3: Connect with Facebook Account</h5>
                                     <button type="button" class="btn-primary" id="facebook-oauth-btn" disabled>
-                                        <span>🔒 Login with Facebook</span>
-                                        <small style="display:block;font-size:0.9em;margin-top:5px;opacity:0.8;">Coming soon...</small>
+                                        <span>🔒 Login with Facebook</span> 
                                     </button>
+                                    <small style="display:block;font-size:0.9em;margin-top:5px;opacity:0.8;">Coming soon...</small>
                                 </div>
                             </div>
 
                             <!-- Facebook Scraping Info -->
                             <div class="info-box">
-                                <h5>📋 Example cookies.json format:</h5>
+                                <h5>Example cookies.json format:</h5>
                                 <pre><code>{
 "c_user": "1234567890",
 "xs": "abcdef1234567890",
@@ -428,7 +433,8 @@
 
                     <button type="button" class="btn-primary" id="save-interface-btn">Save Preferences</button>
                 </section>
-                
+                  </div>
+                </div>
             </div>
         </div>
 

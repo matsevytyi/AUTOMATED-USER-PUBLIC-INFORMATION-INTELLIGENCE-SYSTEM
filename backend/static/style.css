@@ -675,6 +675,187 @@ select.form-control {
   z-index: 100;
 }
 
+/* Profile / Settings styling to match report cards and allow popups */
+.profile-header {
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  padding: var(--space-12) 0;
+}
+
+.profile-title {
+  margin: 0;
+  color: var(--color-primary);
+  font-size: var(--font-size-2xl);
+}
+
+.profile-tabs {
+  display: flex;
+  gap: var(--space-8);
+}
+
+.profile-tab-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  padding: var(--space-6) var(--space-12);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--color-text);
+}
+
+.profile-tab-btn:hover {
+  background: var(--color-secondary-hover);
+}
+
+.profile-tab-btn.active {
+  background: var(--color-secondary);
+  border-color: var(--color-card-border-inner);
+}
+
+/* Make the profile area look like other report cards */
+.profile-card {
+  margin-top: var(--space-24);
+  overflow: visible; /* allow popups/tooltips to escape without being clipped */
+}
+
+.profile-section {
+  margin-bottom: var(--space-16);
+}
+
+.form-section {
+  padding: 0;
+}
+
+.status-box {
+  padding: var(--space-12);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-card-border-inner);
+  background: var(--color-surface);
+}
+
+.info-box {
+  padding: var(--space-12);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-card-border-inner);
+  background: var(--color-background);
+  margin-top: var(--space-12);
+}
+
+.small-text {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.monospace {
+  font-family: var(--font-family-mono);
+  font-size: calc(var(--font-size-base) * 0.95);
+}
+
+.profile-card h3,
+.profile-card h4,
+.profile-card h5 {
+  color: var(--color-primary);
+  margin-bottom: var(--space-12);
+}
+
+.profile-card .form-group > label,
+.profile-card .form-group > label[for],
+.profile-card label {
+  display: block;
+  margin-bottom: var(--space-8);
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+}
+
+.profile-card input[type="text"],
+.profile-card input[type="password"],
+.profile-card input[type="email"],
+.profile-card textarea,
+.profile-card select {
+  display: block;
+  width: 100%;
+  padding: var(--space-8) var(--space-12);
+  font-size: var(--font-size-md);
+  line-height: 1.5;
+  color: var(--color-text);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-base);
+  transition: border-color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
+}
+
+.profile-card input:focus,
+.profile-card textarea:focus,
+.profile-card select:focus {
+  border-color: var(--color-primary);
+  outline: var(--focus-outline);
+}
+
+.profile-card .btn-primary,
+.profile-card button.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8) var(--space-16);
+  border-radius: var(--radius-base);
+  font-size: var(--font-size-base);
+  font-weight: 500;
+  line-height: 1.5;
+  cursor: pointer;
+  transition: all var(--duration-normal) var(--ease-standard);
+  border: none;
+  background: var(--color-primary);
+  color: var(--color-btn-primary-text);
+}
+
+.profile-card .btn-primary:hover,
+.profile-card button.btn-primary:hover {
+  background: var(--color-primary-hover);
+}
+.profile-card .btn-primary:active,
+.profile-card button.btn-primary:active {
+  background: var(--color-primary-active);
+}
+
+.profile-card .btn-secondary,
+.profile-card button.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8) var(--space-16);
+  border-radius: var(--radius-base);
+  font-size: var(--font-size-base);
+  cursor: pointer;
+  border: 1px solid var(--color-border);
+  background: var(--color-secondary);
+  color: var(--color-text);
+}
+
+.profile-card .btn-secondary:hover {
+  background: var(--color-secondary-hover);
+}
+
+.profile-card .btn--outline,
+.profile-card .btn-outline,
+.profile-card button.btn--outline,
+.profile-card button.btn-outline {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+
+/* Small helpers to make actions consistent */
+.profile-card .form-help {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.profile-card .info-text,
+.profile-card .small-text {
+  color: var(--color-text-secondary);
+}
+
 .navbar-brand {
   display: flex;
   flex-direction: column;
