@@ -294,7 +294,8 @@ def get_profile():
             'confirmed': user.confirmed,
             'created_at': user.created_at.isoformat() + 'Z',
             'total_reports': len(user.reports),
-            'total_searches': len(user.searches)
+            'total_searches': len(user.searches),
+            'theme': getattr(user, 'theme', None)
         }
         
         return jsonify({'success': True, 'profile': profile})

@@ -320,8 +320,14 @@ function applyTheme(theme) {
     try {
         if (!theme) theme = 'device';
         document.documentElement.setAttribute('data-color-scheme', theme);
-        // persist locally
-        try { localStorage.setItem('theme', theme); } catch (e) {}
+        // persist locally: if logged in, store per-user; otherwise store global guest theme
+        try {
+            if (AppState && AppState.currentUser && AppState.currentUser.email) {
+                localStorage.setItem('theme:' + AppState.currentUser.email, theme);
+            } else {
+                localStorage.setItem('theme', theme);
+            }
+        } catch (e) {}
         // update radio inputs state
         const radios = document.querySelectorAll('input[name="theme"]');
         radios.forEach(r => { r.checked = (r.value === theme); });
@@ -350,7 +356,20 @@ async function persistThemeToServer(theme) {
 function initThemeControls() {
     // set from localStorage first, fallback to 'device'
     let saved = 'device';
-    try { const t = localStorage.getItem('theme'); if (t) saved = t; } catch (e) {}
+    try {
+        // if logged in and have per-user theme, prefer that
+        if (AppState && AppState.currentUser && AppState.currentUser.email) {
+            const userKey = 'theme:' + AppState.currentUser.email;
+            const ut = localStorage.getItem(userKey);
+            if (ut) {
+                saved = ut;
+            } else {
+                const t = localStorage.getItem('theme'); if (t) saved = t;
+            }
+        } else {
+            const t = localStorage.getItem('theme'); if (t) saved = t;
+        }
+    } catch (e) {}
     applyTheme(saved);
 
     // wire radio inputs
@@ -364,6 +383,19 @@ function initThemeControls() {
             persistThemeToServer(t);
         });
     });
+}
+
+// Fetch full profile for logged-in user (includes theme)
+async function fetchProfile() {
+    try {
+        const res = await fetch('/api/profile', {
+            method: 'GET',
+            headers: { 'Authorization': 'Bearer ' + AppState.jwt }
+        });
+        return await res.json();
+    } catch (e) {
+        return null;
+    }
 }
 
 function validateLoginForm() {
@@ -507,6 +539,7 @@ function displayReport(report) {
 
 function logout() {
     AppState.currentUser = null;
+    AppState.jwt = null;
     AppState.searchHistory = [];
     AppState.currentReport = null;
     // Hide report section
@@ -517,6 +550,11 @@ function logout() {
     
     showNotification('Logged out successfully', 'info');
     showPage('home');
+    // restore guest/global theme (do not keep previous user's theme applied)
+    try {
+        const guestTheme = localStorage.getItem('theme') || 'device';
+        applyTheme(guestTheme);
+    } catch (e) {}
 }
 
 // Event Listeners
@@ -609,10 +647,24 @@ document.addEventListener('DOMContentLoaded', function() {
             if (response.success) {
                 setButtonLoading(submitBtn, false);
                 showNotification(response.message, 'success');
+                try {
+                    const profileRes = await fetchProfile();
+                    if (profileRes && profileRes.success && profileRes.profile) {
+                        AppState.currentUser = Object.assign(AppState.currentUser || {}, profileRes.profile);
+                        // choose theme: server preference > per-user localStorage > guest localStorage > device
+                        const serverTheme = profileRes.profile.theme;
+                        const localUserTheme = localStorage.getItem('theme:' + profileRes.profile.email);
+                        // Preference order: server-saved > per-user local > device default
+                        const chosen = serverTheme || localUserTheme || 'device';
+                        applyTheme(chosen);
+                    }
+                } catch (e) {
+                }
+
                 showPage('dashboard');
-                        await reloadSearchHistory();
-                        // update FB cookies status for logged-in user
-                        getFacebookCookiesStatus();
+                await reloadSearchHistory();
+                // update FB cookies status for logged-in user
+                getFacebookCookiesStatus();
             } else {
                 showNotification(response.message, 'error');
                 setButtonLoading(submitBtn, false);
