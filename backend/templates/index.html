@@ -302,7 +302,7 @@
                 <div class="container">
                 <section id="profile-account" class="profile-section">
                 <!-- Account form -->
-                 <h3>Account Information</h3>
+                    <h3>Account Information</h3>
                     <form id="update-password-form" class="form-section">
                         <div class="form-group">
                             <label for="current-password">Current Password</label>
@@ -321,7 +321,7 @@
                 </section>
                 <section id="profile-privacy" class="profile-section">
                 <!-- Privacy settings -->
-                 <h3>Facebook Data Collection</h3>
+                            <h3>Facebook Data Collection</h3>
                             <div id="facebook-status" class="status-box">
                                 <p>Status: <span id="fb-status-text">Checking...</span></p>
                             </div>
@@ -392,22 +392,47 @@
                 </section>
                 
                 <section id="profile-llm" class="profile-section">
-                <!-- LLM config -->
-                 LLM cfg
-                 <br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
                 </section>
                 <section id="profile-appearance" class="profile-section">
                 <!-- Theme and UI choices -->
-                 Theme
-                 <br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+                 <h3>Interface Customization</h3>
+
+                    <div class="form-group">
+                        <label>Theme</label>
+                        <div class="radio-group">
+                            <label class="radio-option">
+                                <input type="radio" name="theme" value="light"> Light
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="theme" value="dark"> Dark
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="theme" value="device" checked> Device (Auto)
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="checkbox-option">
+                            <input type="checkbox" id="compact-view" checked>
+                            <span>Compact View</span>
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="checkbox-option">
+                            <input type="checkbox" id="notifications-enabled" checked>
+                            <span>Enable Notifications</span>
+                        </label>
+                    </div>
+
+                    <button type="button" class="btn-primary" id="save-interface-btn">Save Preferences</button>
                 </section>
-                <section id="profile-danger" class="profile-section">
-                <!-- Danger zone -->
-                 Danger zone
-                </section>
-                </div>
+                
             </div>
-            </section>
+        </div>
+
+        </section>
 
 
         <!-- Loading Overlay -->
