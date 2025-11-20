@@ -402,6 +402,34 @@ def change_password():
         print('Error changing password:', e)
         return jsonify({'success': False, 'message': 'Failed to change password. Please try again.'}), 500
 
+@app.route('/api/settings/theme', methods=['POST'])
+@jwt_required()
+def set_theme():
+    """Set user theme preference"""
+    data = request.json
+    theme = data.get('theme')  # 'light', 'dark', 'device'
+
+    if theme not in ['light', 'dark', 'device']:
+        return jsonify({'error': 'Invalid theme'}), 400
+
+    # Persist preference to database for the current user (best-effort)
+    try:
+        current_user_email = get_jwt_identity()
+        user = User.query.filter_by(email=current_user_email).first()
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+
+        # set and commit theme preference
+        user.theme = theme
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to save theme preference'}), 500
+
+    return jsonify({'success': True, 'theme': theme}), 200
+
+
+
 # Health check endpoint
 @app.route('/api/health', methods=['GET'])
 def health_check():

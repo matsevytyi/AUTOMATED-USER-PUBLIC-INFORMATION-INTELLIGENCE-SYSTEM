@@ -9,6 +9,7 @@ class User(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
     name = db.Column(db.String(100), nullable=True)
+    theme = db.Column(db.String(20), nullable=True, default='device')
     confirmed = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
@@ -110,3 +111,10 @@ class DiscoverSource(db.Model):
             'name': self.name,
             'description': self.description
         }
+
+class FacebookCookies(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_email = db.Column(db.Integer, db.ForeignKey('user.email'), nullable=False, unique=True)
+    cookies_json = db.Column(db.Text, nullable=False)
+    saved_at = db.Column(db.DateTime, default=datetime.utcnow)
+    expires_at = db.Column(db.DateTime, nullable=True)

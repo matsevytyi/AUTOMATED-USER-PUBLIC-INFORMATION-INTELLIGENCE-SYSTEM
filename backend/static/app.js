@@ -279,7 +279,7 @@ function validatePasswordChangeForm() {
         return false;
     }
     
-    const current_password = current_password_field.value.trim();
+    const current_password = current_password_field.value;
     const new_password = new_password_field.value;
     const confirm_new_password = confirm_new_password_field.value;
     
@@ -312,6 +312,58 @@ function validatePasswordChangeForm() {
     }
     
     return isValid;
+}
+
+// THEME HANDLING
+function applyTheme(theme) {
+    // theme: 'light' | 'dark' | 'device'
+    try {
+        if (!theme) theme = 'device';
+        document.documentElement.setAttribute('data-color-scheme', theme);
+        // persist locally
+        try { localStorage.setItem('theme', theme); } catch (e) {}
+        // update radio inputs state
+        const radios = document.querySelectorAll('input[name="theme"]');
+        radios.forEach(r => { r.checked = (r.value === theme); });
+    } catch (e) {
+        console.warn('Failed to apply theme', e);
+    }
+}
+
+async function persistThemeToServer(theme) {
+    // Try to save preference server-side if logged in; ignore errors
+    try {
+        if (!AppState || !AppState.jwt) return;
+        await fetch('/api/settings/theme', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + AppState.jwt
+            },
+            body: JSON.stringify({ theme })
+        });
+    } catch (e) {
+        // ignore
+    }
+}
+
+function initThemeControls() {
+    // set from localStorage first, fallback to 'device'
+    let saved = 'device';
+    try { const t = localStorage.getItem('theme'); if (t) saved = t; } catch (e) {}
+    applyTheme(saved);
+
+    // wire radio inputs
+    const radios = document.querySelectorAll('input[name="theme"]');
+    radios.forEach(r => {
+        r.addEventListener('change', async function() {
+            if (!this.checked) return;
+            const t = this.value;
+            applyTheme(t);
+            // attempt to persist
+            persistThemeToServer(t);
+        });
+    });
 }
 
 function validateLoginForm() {
@@ -457,7 +509,6 @@ function logout() {
     AppState.currentUser = null;
     AppState.searchHistory = [];
     AppState.currentReport = null;
-    
     // Hide report section
     const reportSection = document.getElementById('report-section');
     if (reportSection) {
@@ -559,15 +610,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 setButtonLoading(submitBtn, false);
                 showNotification(response.message, 'success');
                 showPage('dashboard');
-                await reloadSearchHistory();
+                        await reloadSearchHistory();
+                        // update FB cookies status for logged-in user
+                        getFacebookCookiesStatus();
             } else {
                 showNotification(response.message, 'error');
                 setButtonLoading(submitBtn, false);
             }
         });
     }
-    
-const passwordUpdateForm = document.getElementById('update-password-form');
+
+    const passwordUpdateForm = document.getElementById('update-password-form');
     if (passwordUpdateForm) {
         passwordUpdateForm.addEventListener('submit', async function(e) {
             e.preventDefault();
@@ -692,6 +745,39 @@ const passwordUpdateForm = document.getElementById('update-password-form');
         });
     });
 
+    // cookies
+    document.getElementById('paste-cookies-btn').addEventListener('click', function() {
+        const textarea = document.getElementById('cookies-json');
+        const status = document.getElementById('facebook-cookies-status');
+        try {
+            const cookiesObj = JSON.parse(textarea.value);
+            postFacebookCookies(cookiesObj);
+        } catch (err) {
+            status.textContent = "Invalid JSON format";
+            status.style.color = "var(--color-error)";
+        }
+    });
+
+    document.getElementById('save-cookies-btn').addEventListener('click', function() {
+        const status = document.getElementById('facebook-cookies-status');
+        // Read all input fields
+        const c_user = document.getElementById('cookie-c-user').value.trim();
+        const xs    = document.getElementById('cookie-xs').value.trim();
+        const datr  = document.getElementById('cookie-datr').value.trim();
+        const fr    = document.getElementById('cookie-fr').value.trim();
+        const spin  = document.getElementById('cookie-spin').value.trim();
+
+        // Build cookies object (only add fields if non-empty)
+        let cookiesObj = {};
+        if (c_user) cookiesObj.c_user = c_user;
+        if (xs)     cookiesObj.xs     = xs;
+        if (datr)   cookiesObj.datr   = datr;
+        if (fr)     cookiesObj.fr     = fr;
+        if (spin)   cookiesObj.spin   = spin;
+
+        postFacebookCookies(cookiesObj);
+    });
+
     
     // Notification close button
     const notificationClose = document.getElementById('notification-close');
@@ -712,6 +798,10 @@ const passwordUpdateForm = document.getElementById('update-password-form');
     
     // Initialize the application
     updateNavigation();
+    // setup theme controls and apply saved theme
+    initThemeControls();
+    // update FB cookies status (if logged in)
+    getFacebookCookiesStatus();
 });
 
 async function reloadSearchHistory() {
@@ -727,6 +817,81 @@ async function reloadSearchHistory() {
         loadSearchHistory();
     }
 }
+
+// Post cookies.json to backend
+async function postFacebookCookies(cookiesObj) {
+    const status = document.getElementById('facebook-cookies-status');
+    try {
+        // Must contain at least c_user and xs
+        if (!cookiesObj.c_user || !cookiesObj.xs) {
+            status.textContent = "Missing required c_user or xs field";
+            status.style.color = "var(--color-error)";
+            return;
+        }
+        const res = await fetch("/api/profile/facebook/cookies", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": AppState && AppState.jwt ? ("Bearer " + AppState.jwt) : "",
+            },
+            body: JSON.stringify({ cookies_json: JSON.stringify(cookiesObj) })
+        });
+        const data = await res.json();
+        if (data.success) {
+            status.textContent = "Cookies saved!";
+            status.style.color = "var(--color-success)";
+            // Refresh status badge
+            await getFacebookCookiesStatus();
+        } else {
+            status.textContent = data.error || "Failed to save cookies";
+            status.style.color = "var(--color-error)";
+        }
+    } catch (e) {
+        status.textContent = "Request failed";
+        status.style.color = "var(--color-error)";
+    }
+}
+
+// Fetch Facebook cookies status from backend and update UI
+async function getFacebookCookiesStatus() {
+    const fbStatusSpan = document.getElementById('fb-status-text');
+    const statusEl = document.getElementById('facebook-cookies-status');
+
+    if (!AppState || !AppState.jwt) {
+        if (fbStatusSpan) fbStatusSpan.textContent = 'Not signed in';
+        if (statusEl) {
+            statusEl.textContent = 'Sign in to manage cookies';
+            statusEl.style.color = 'var(--color-error)';
+        }
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/profile/facebook/cookies', {
+            method: 'GET',
+            headers: {
+                'Authorization': 'Bearer ' + AppState.jwt
+            }
+        });
+        const data = await res.json();
+        if (data.has_cookies) {
+            if (data.is_expired) {
+                if (fbStatusSpan) fbStatusSpan.textContent = 'Saved (expired)';
+                if (statusEl) { statusEl.textContent = 'Cookies present but expired'; statusEl.style.color = 'orange'; }
+            } else {
+                if (fbStatusSpan) fbStatusSpan.textContent = 'Saved (valid)';
+                if (statusEl) { statusEl.textContent = 'Cookies saved and valid'; statusEl.style.color = 'var(--color-success)'; }
+            }
+        } else {
+            if (fbStatusSpan) fbStatusSpan.textContent = 'Not configured';
+            if (statusEl) { statusEl.textContent = 'No cookies saved'; statusEl.style.color = 'var(--color-error)'; }
+        }
+    } catch (e) {
+        if (fbStatusSpan) fbStatusSpan.textContent = 'Status unknown';
+        if (statusEl) { statusEl.textContent = 'Failed to fetch status'; statusEl.style.color = 'var(--color-error)'; }
+    }
+}
+
 
 
 // Make loadReport function global for onclick handlers
