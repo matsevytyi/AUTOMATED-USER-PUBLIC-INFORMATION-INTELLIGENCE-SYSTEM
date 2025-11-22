@@ -102,6 +102,68 @@ class FacebookCookieManager:
         except Exception as e:
             print(f"[FB COOKIE VERIFY] request failed: {e}")
             return False
+        
+@staticmethod
+def login_with_credentials(login: str, password: str, headless: bool = True, wait_seconds: int = 10) -> dict:
+    """Attempt to log into Facebook using Selenium and return cookie map {name: value}.
+    Note: This may fail on accounts with 2FA or checkpoint flows.
+    """
+    options = Options()
+    if headless:
+        options.add_argument('--headless=new')
+        options.add_argument('--disable-gpu')
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-dev-shm-usage')
+
+    service = Service(ChromeDriverManager().install())
+    driver = webdriver.Chrome(service=service, options=options)
+
+    try:
+        # Use mobile login which is often simpler
+        driver.get('https://m.facebook.com/login.php')
+        time.sleep(1.2)
+
+        # Find fields
+        try:
+            email_el = driver.find_element(By.NAME, 'email')
+            pass_el = driver.find_element(By.NAME, 'pass')
+        except Exception:
+            # Try desktop login form
+            email_el = driver.find_element(By.ID, 'email')
+            pass_el = driver.find_element(By.ID, 'pass')
+
+        email_el.clear()
+        email_el.send_keys(login)
+        pass_el.clear()
+        pass_el.send_keys(password)
+
+        # submit
+        try:
+            login_btn = driver.find_element(By.NAME, 'login')
+            login_btn.click()
+        except Exception:
+            pass
+
+        # Wait a bit for redirect
+        time.sleep(wait_seconds)
+
+        # Check if we are logged in by presence of c_user cookie
+        cookies = driver.get_cookies()
+        cookie_map = {c['name']: c['value'] for c in cookies}
+
+        # Basic validation
+        if 'c_user' in cookie_map and 'xs' in cookie_map:
+            return cookie_map
+        else:
+            # could be checkpoint/2FA — return what we have but caller should verify
+            return cookie_map
+    finally:
+        try:
+            driver.quit()
+        except Exception:
+            pass
+
+
 
     
 # EXAMPLE cookies:

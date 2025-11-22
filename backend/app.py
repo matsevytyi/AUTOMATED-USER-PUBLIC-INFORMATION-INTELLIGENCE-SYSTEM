@@ -350,6 +350,49 @@ def update_facebook_cookies():
 
     return jsonify({'success': True}), 200
 
+
+@app.route('/api/profile/facebook/login', methods=['POST'])
+@jwt_required()
+def facebook_login_with_credentials():
+    """Perform server-side login to Facebook using provided credentials and save extracted cookies.
+    Request JSON: { "login": "fb_login_or_email", "password": "fb_password", "headless": true }
+    """
+    data = request.json or {}
+    fb_login = data.get('login')
+    fb_password = data.get('password')
+    headless = data.get('headless', True)
+
+    if not fb_login or not fb_password:
+        return jsonify({'success': False, 'message': 'Login and password are required.'}), 400
+
+    # Attempt login using Selenium helper
+    try:
+        cookie_map = FacebookCookieManager.login_with_credentials(fb_login, fb_password, headless=bool(headless))
+    except Exception as e:
+        print('FB login error:', e)
+        return jsonify({'success': False, 'message': 'Failed to perform login: ' + str(e)}), 500
+
+    # Validate cookies
+    ok = FacebookCookieManager.verify_cookies_map(cookie_map)
+    if not ok:
+        # still return cookies for debugging, but mark as failure
+        return jsonify({'success': False, 'message': 'Login succeeded but cookies appear invalid or 2FA required.', 'cookies': cookie_map}), 400
+
+    # Upsert into FacebookCookies table (store JSON string)
+    expires_at = datetime.utcnow() + relativedelta(months=1)
+    current_user_email = get_jwt_identity()
+    fc = FacebookCookies.query.filter_by(user_email=current_user_email).first()
+    if not fc:
+        fc = FacebookCookies(user_email=current_user_email, cookies_json=json.dumps(cookie_map), saved_at=datetime.utcnow(), expires_at=expires_at)
+        db.session.add(fc)
+    else:
+        fc.cookies_json = json.dumps(cookie_map)
+        fc.saved_at = datetime.utcnow()
+        fc.expires_at = expires_at
+    db.session.commit()
+
+    return jsonify({'success': True, 'message': 'Logged in and cookies saved.'}), 200
+
 @app.route('/api/profile/facebook/cookies', methods=['GET'])
 @jwt_required()
 def get_facebook_cookies_status():

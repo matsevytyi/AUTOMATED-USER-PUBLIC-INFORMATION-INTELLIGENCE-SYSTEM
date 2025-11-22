@@ -333,6 +333,29 @@
                                 <h4>Add Facebook Cookies</h4>
                                 <p class="info-text">Choose one of the following methods:</p>
 
+                                <!-- Method 0: Credentials-based login (uses server-side Selenium to obtain cookies) -->
+                                <div class="method-option">
+                                    <h5>Method 3: Login with Facebook (Credentials)</h5>
+                                    <form id="facebook-login-form" class="form-section" onsubmit="return false;">
+                                        <div class="form-group">
+                                            <label for="fb-login">Facebook login (email or phone)</label>
+                                            <input type="text" id="fb-login" class="form-control" placeholder="you@provider.com or +123456789" autocomplete="username">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="fb-password">Password</label>
+                                            <input type="password" id="fb-password" class="form-control" placeholder="Facebook password" autocomplete="current-password">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="checkbox-option"><input type="checkbox" id="fb-headless" checked> Run headless (recommended)</label>
+                                        </div>
+                                        <div class="form-actions" style="margin-top:8px;">
+                                            <button type="button" class="btn btn--primary" id="facebook-login-btn">Login & Save Cookies</button>
+                                            <button type="button" class="btn btn--outline" id="facebook-test-login-btn">Test Login</button>
+                                        </div>
+                                        <small style="display:block;font-size:0.9em;margin-top:8px;opacity:0.85;">Warning: provide your Facebook credentials only if you trust this server. Passwords are not stored permanently; the server uses them to obtain cookies and discards them.</small>
+                                    </form>
+                                </div>
+
                                 <!-- Method 1: Paste JSON -->
                                 <div class="method-option">
                                     <h5>Method 1: Paste Cookies (JSON)</h5>
@@ -371,15 +394,6 @@
                                 </div>
 
                                 <br>
-
-                                <!-- Method 3: OAuth (Future) -->
-                                <div class="method-option">
-                                    <h5>Method 3: Connect with Facebook Account</h5>
-                                    <button type="button" class="btn-primary" id="facebook-oauth-btn" disabled>
-                                        <span>🔒 Login with Facebook</span> 
-                                    </button>
-                                    <small style="display:block;font-size:0.9em;margin-top:5px;opacity:0.8;">Coming soon...</small>
-                                </div>
                             </div>
 
                             <!-- Facebook Scraping Info -->
