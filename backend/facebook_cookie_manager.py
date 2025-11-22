@@ -2,6 +2,13 @@ import os
 import json
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
+import requests
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.common.by import By
+import time
 
 COOKIES_DIR = 'backend/data_collection/facebook'
 os.makedirs(COOKIES_DIR, exist_ok=True)
@@ -64,9 +71,39 @@ class FacebookCookieManager:
 
     @staticmethod
     def verify_cookies_map(cookies_map: dict) -> bool:
+        """Lightweight verification: try to access mobile Facebook with provided cookies_map.
+        cookies_map is expected to be {'c_user': '...', 'xs': '...', ...}
+        Returns True if cookies appear valid (not redirected to login, user account in place), False otherwise.
+        """
+        if not cookies_map:
+            return False
+        
+        # Minimal checks
+        if 'c_user' not in cookies_map or 'xs' not in cookies_map:
+            print("[FB COOKIE VERIFY] Missing c_user/xs in cookies map.")
+            return False
 
-        return True
+        try:
+            r = requests.get('https://m.facebook.com/', cookies=cookies_map, timeout=6)
+            if r.status_code != 200:
+                print("[FB COOKIE VERIFY] Non-200 status code:", r.status_code)
+                return False
+            url_lower = r.url.lower() if r.url else ''
+            text_lower = (r.text or '').lower()
+            if 'login' in url_lower:
+                print("[FB COOKIE VERIFY] Redirected to login page.", url_lower, "<>", text_lower)
+                return False
+            if not "profile.php" in text_lower or not "logout" in text_lower:
+                print("[FB COOKIE VERIFY] Profile/home not reachable (not logged in)")
+                return False
+            
+            return True
+        
+        except Exception as e:
+            print(f"[FB COOKIE VERIFY] request failed: {e}")
+            return False
 
+    
 # EXAMPLE cookies:
 """
 {"c_user":"100023014805164",
