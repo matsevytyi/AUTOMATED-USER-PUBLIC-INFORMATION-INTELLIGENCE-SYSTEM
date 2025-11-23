@@ -463,7 +463,7 @@ def post_session_message(session_id):
     user_msg = data.get('message', '').strip()
     scope = data.get('scope', 'report')  # 'report' or 'datapieces'
     datapiece_ids = data.get('datapiece_ids', []) or []
-    provider = data.get('provider') or None
+    provider = "groq"
 
     if not user_msg:
         return jsonify({'success': False, 'message': 'Message is required'}), 400

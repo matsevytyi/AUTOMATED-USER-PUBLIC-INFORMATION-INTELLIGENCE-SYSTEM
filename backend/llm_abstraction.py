@@ -10,6 +10,7 @@ from typing import List, Dict, Any
 import os
 import json
 from datetime import datetime
+import requests
 
 
 def _stub_response(messages: List[Dict[str, Any]], context: List[Dict[str, str]]) -> Dict[str, Any]:
@@ -60,8 +61,38 @@ def chat_with_context(provider: str, messages: List[Dict[str, Any]], context: Li
 				else:
 					continue
 			elif p == 'groq':
-				# GROQ provider not implemented yet; skip to stub
-				continue
+				# GROQ provider implementation (calls a configurable endpoint)
+				api_key = os.environ.get('GROQ_API_KEY')
+				if not api_key:
+					continue
+				# allow overriding model name and base URL
+				model_name = os.environ.get('GROQ_MODEL', 'groq/compound-mini')
+				base_url = os.environ.get('GROQ_API_URL') or "https://api.groq.com/openai/v1/chat/completions"
+				try:
+					payload = {
+                        "model": model_name,
+                        "messages": messages,
+                        "temperature": float(os.environ.get('GROQ_TEMPERATURE', 0.2)),
+                        "max_tokens": int(os.environ.get('GROQ_MAX_TOKENS', 512)),
+                    }
+					headers = {
+						'Authorization': f'Bearer {api_key}',
+						'Content-Type': 'application/json'
+					}
+					resp = requests.post(base_url, headers=headers, json=payload, timeout=30)
+					if resp.status_code >= 400:
+						try:
+							print('GROQ error', resp.status_code, resp.json())
+						except Exception:
+							print('GROQ request failed', resp.status_code, resp.text)
+						continue
+					data = resp.json()
+					# Try to extract text from common response shapes
+					text = data["choices"][0]["message"]["content"]
+					return {'reply': text, 'sources': []}
+				except Exception as e:
+					print('GROQ call failed:', e)
+					continue
 			elif p == 'local':
 				# Local LLM API can be implemented later; skip for now
 				continue

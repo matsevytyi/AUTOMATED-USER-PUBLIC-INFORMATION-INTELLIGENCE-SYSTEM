@@ -12,3 +12,7 @@ class Config:
     MAIL_USE_TLS = os.environ.get('MAIL_USE_TLS', 'true').lower() in ['true', 'on', '1']
     MAIL_USERNAME = os.environ.get('MAIL_USERNAME')
     MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
+    GROQ_API_KEY = os.environ.get('GROQ_API_KEY')
+    OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
+    LLAMA_PORT = int(os.environ.get('LLAMA_PORT') or 8000)
+    LLAMA_HOST = os.environ.get('LLAMA_HOST') or 'localhost'

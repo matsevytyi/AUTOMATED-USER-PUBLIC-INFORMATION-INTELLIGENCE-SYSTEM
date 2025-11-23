@@ -78,7 +78,7 @@ def generate_complete_report(db, report_id: str, information_pieces: List[Inform
         try:
             raw = piece.content or ''
             snippet = raw.split('\n', 1)[0][:400]
-            piece.snippet = snippet
+            piece.snippet = snippet if snippet else (raw[:400] + ("..." if len(raw) > 400 else ""))
             # persist changes if piece is attached to session (best-effort)
             try:
                 db.session.merge(piece)
