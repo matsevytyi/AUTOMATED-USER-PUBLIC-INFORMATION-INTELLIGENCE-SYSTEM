@@ -8,6 +8,147 @@ const AppState = {
     pendingUser: null
 };
 
+// Chat state
+AppState.chat = {
+    activeSessionId: null,
+    reportId: null,
+    selectedPieces: []
+};
+
+function openChatPanel(reportId, preselectPieceId) {
+    AppState.chat.reportId = reportId;
+    AppState.chat.activeSessionId = null;
+    AppState.chat.selectedPieces = [];
+    if (preselectPieceId) AppState.chat.selectedPieces.push(preselectPieceId);
+    document.getElementById('chat-panel').classList.remove('hidden');
+    document.getElementById('chat-report-title').textContent = `Report Chat - ${reportId}`;
+    updateSelectedPiecesUI();
+    // clear messages
+    const msgs = document.getElementById('chat-messages'); if (msgs) msgs.innerHTML = '';
+}
+
+// ensure opening chat also creates/returns the single session for this report
+async function openChatPanelAndLoad(reportId, preselectPieceId) {
+    openChatPanel(reportId, preselectPieceId);
+    document.body.classList.add('chat-open');
+    const session = await createChatSessionForReport(reportId);
+    if (session && session.id) {
+        AppState.chat.activeSessionId = session.id;
+        document.getElementById('chat-session-meta').textContent = `Session: ${session.id}`;
+        await loadSessionMessages(session.id);
+    }
+}
+
+function closeChatPanel() {
+    document.getElementById('chat-panel').classList.add('hidden');
+    document.body.classList.remove('chat-open');
+}
+
+function updateSelectedPiecesUI() {
+    const el = document.getElementById('chat-selected-pieces');
+    if (!el) return;
+    if (!AppState.chat.selectedPieces || AppState.chat.selectedPieces.length === 0) {
+        el.style.display = 'none';
+        el.innerHTML = '';
+        return;
+    }
+    el.style.display = 'block';
+    // show human-friendly names from DOM if available
+    const labels = AppState.chat.selectedPieces.map(id => {
+        const node = document.querySelector(`[data-piece-id="${id}"]`);
+        const name = node ? node.getAttribute('data-piece-name') || id : id;
+        return `<span class="chip">${name}</span>`;
+    });
+    el.innerHTML = '<strong>Selected datapieces:</strong> ' + labels.join(' ');
+}
+
+async function createChatSessionForReport(reportId, title = null, save_history = true) {
+    try {
+        const res = await fetch('/api/chat/report/' + encodeURIComponent(reportId) + '/sessions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + AppState.jwt },
+            body: JSON.stringify({ title, save_history })
+        });
+        const data = await res.json();
+        if (data.success && data.session) {
+            AppState.chat.activeSessionId = data.session.id;
+            document.getElementById('chat-session-meta').textContent = `Session: ${data.session.id}`;
+            return data.session;
+        } else {
+            showNotification(data.message || 'Failed to create session', 'error');
+            return null;
+        }
+    } catch (e) {
+        console.error('create session failed', e);
+        showNotification('Create session failed', 'error');
+        return null;
+    }
+}
+
+async function loadSessionMessages(sessionId) {
+    try {
+        const res = await fetch('/api/chat/sessions/' + sessionId + '/messages', {
+            headers: { 'Authorization': 'Bearer ' + AppState.jwt }
+        });
+        const data = await res.json();
+        if (data.success) {
+            const msgs = data.messages || [];
+            const container = document.getElementById('chat-messages');
+            container.innerHTML = '';
+            msgs.forEach(m => appendMessageToChatDOM(m.sender, m.content));
+            container.scrollTop = container.scrollHeight;
+        }
+    } catch (e) {
+        console.error('load messages failed', e);
+    }
+}
+
+function appendMessageToChatDOM(sender, content) {
+    const container = document.getElementById('chat-messages');
+    if (!container) return;
+    const el = document.createElement('div');
+    el.className = 'chat-bubble ' + (sender === 'user' ? 'chat-user' : 'chat-assistant');
+    el.textContent = content;
+    container.appendChild(el);
+    container.scrollTop = container.scrollHeight;
+}
+
+async function sendChatMessage() {
+    const input = document.getElementById('chat-input');
+    if (!input) return;
+    const text = input.value.trim();
+    if (!text) return;
+    // ensure session
+    if (!AppState.chat.activeSessionId) {
+        const session = await createChatSessionForReport(AppState.chat.reportId);
+        if (!session) return;
+    }
+
+    // gather scope and piece ids
+    const scope = document.getElementById('chat-scope')?.value || 'report';
+    const body = { message: text, scope: scope, datapiece_ids: AppState.chat.selectedPieces.map(id => Number(id)) };
+
+    appendMessageToChatDOM('user', text);
+    input.value = '';
+
+    try {
+        const res = await fetch('/api/chat/sessions/' + AppState.chat.activeSessionId + '/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + AppState.jwt },
+            body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (data.success) {
+            appendMessageToChatDOM('assistant', data.assistant || '(no reply)');
+        } else {
+            appendMessageToChatDOM('assistant', data.message || 'Failed to get reply');
+        }
+    } catch (e) {
+        console.error('send chat failed', e);
+        appendMessageToChatDOM('assistant', 'Request failed');
+    }
+}
+
 
 // Utility Functions
 function showNotification(message, type = 'info') {
@@ -496,7 +637,7 @@ function displayReport(report) {
     const findingsList = document.getElementById('findings-list');
     if (findingsList) {
         findingsList.innerHTML = report.detailed_findings.map(finding => `
-            <div class="finding-item risk-${finding.risk}">
+            <div class="finding-item risk-${finding.risk}" data-piece-id="${finding.id}" data-piece-name="${finding.info}">
                 <div class="finding-header">
                     <div class="finding-source">${finding.source}</div>
                     <div class="finding-category">${finding.category}</div>
@@ -505,6 +646,7 @@ function displayReport(report) {
                 <div class="finding-meta">
                     <div class="finding-timestamp">Found: ${new Date(finding.timestamp).toLocaleDateString()}</div>
                     ${finding.url !== 'N/A' ? `<a href="https://${finding.url}" target="_blank" class="finding-url">${finding.url}</a>` : '<span class="finding-url">Source not public</span>'}
+                    <button class="btn-inline-ask btn btn--outline" data-piece-id="${finding.id}" style="margin-left:8px;">Ask</button>
                 </div>
             </div>
         `).join('');
@@ -1018,6 +1160,36 @@ document.addEventListener('DOMContentLoaded', function() {
     initThemeControls();
     // update FB cookies status (if logged in)
     getFacebookCookiesStatus();
+
+    // Chat panel listeners
+    const chatCloseBtn = document.getElementById('chat-close-btn');
+    if (chatCloseBtn) chatCloseBtn.addEventListener('click', () => closeChatPanel());
+
+    const chatCreateBtn = document.getElementById('chat-create-session-btn');
+    if (chatCreateBtn) chatCreateBtn.addEventListener('click', async function() {
+        if (!AppState.chat.reportId) AppState.chat.reportId = document.getElementById('report-id')?.textContent || null;
+        if (!AppState.chat.reportId) { showNotification('No report selected', 'error'); return; }
+        await createChatSessionForReport(AppState.chat.reportId);
+        if (AppState.chat.activeSessionId) await loadSessionMessages(AppState.chat.activeSessionId);
+    });
+
+    const chatSendBtn = document.getElementById('chat-send-btn');
+    if (chatSendBtn) chatSendBtn.addEventListener('click', sendChatMessage);
+
+    // Delegate inline Ask button clicks from findings list
+    const findingsContainer = document.getElementById('findings-list');
+    if (findingsContainer) {
+        findingsContainer.addEventListener('click', function(e) {
+            const btn = e.target.closest('.btn-inline-ask');
+            if (!btn) return;
+            const pieceId = btn.getAttribute('data-piece-id');
+            // open chat panel, create/get session and load messages
+            const reportId = document.getElementById('report-id')?.textContent || AppState.chat.reportId;
+            openChatPanelAndLoad(reportId, pieceId).then(() => {
+                try { document.getElementById('chat-input').focus(); } catch (e) {}
+            });
+        });
+    }
 });
 
 async function reloadSearchHistory() {

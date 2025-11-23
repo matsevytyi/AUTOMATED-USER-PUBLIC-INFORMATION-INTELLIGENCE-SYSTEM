@@ -838,6 +838,35 @@ select.form-control {
 
 .profile-card .btn--outline,
 .profile-card .btn-outline,
+
+/* Chat panel on the right */
+.chat-panel {
+  position: fixed;
+  right: 0;
+  top: 0;
+  height: 100vh;
+  width: 30%;
+  max-width: 420px;
+  background: var(--color-surface);
+  box-shadow: -8px 0 24px rgba(0,0,0,0.08);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+}
+.chat-panel.hidden {
+  display: none;
+}
+
+/* Shift report content when chat is open */
+.chat-open .report-card {
+  margin-right: 30%;
+  transition: margin-right var(--duration-normal) var(--ease-standard);
+}
+
+.chat-messages { padding: 8px; }
+.chat-bubble { margin-bottom: 8px; padding: 8px 10px; border-radius: 8px; }
+.chat-user { background: rgba(33,128,141,0.08); align-self: flex-end; }
+.chat-assistant { background: rgba(98,108,113,0.06); align-self: flex-start; }
 .profile-card button.btn--outline,
 .profile-card button.btn-outline {
   background: transparent;
