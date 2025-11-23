@@ -121,3 +121,43 @@ class FacebookCookies(db.Model):
     cookies_json = db.Column(db.Text, nullable=False)
     saved_at = db.Column(db.DateTime, default=datetime.utcnow)
     expires_at = db.Column(db.DateTime, nullable=True)
+
+
+class ChatSession(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_email = db.Column(db.String(120), db.ForeignKey('user.email'), nullable=False)
+    report_id = db.Column(db.String(50), db.ForeignKey('report.report_id'), nullable=True)
+    title = db.Column(db.String(255), nullable=True)
+    save_history = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    messages = db.relationship('ChatMessage', backref='session', lazy=True)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_email': self.user_email,
+            'report_id': self.report_id,
+            'title': self.title,
+            'save_history': self.save_history,
+            'created_at': self.created_at.isoformat() + 'Z'
+        }
+
+
+class ChatMessage(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    session_id = db.Column(db.Integer, db.ForeignKey('chat_session.id'), nullable=False)
+    sender = db.Column(db.String(20), nullable=False)  # 'user' | 'assistant' | 'system'
+    content = db.Column(db.Text, nullable=False)
+    meta = db.Column(db.Text, nullable=True)  # JSON string for optional metadata (sources, provider info)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'session_id': self.session_id,
+            'sender': self.sender,
+            'content': self.content,
+            'meta': json.loads(self.meta) if self.meta else None,
+            'created_at': self.created_at.isoformat() + 'Z'
+        }
