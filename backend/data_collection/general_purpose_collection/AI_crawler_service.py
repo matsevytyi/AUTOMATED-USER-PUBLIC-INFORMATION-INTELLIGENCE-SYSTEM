@@ -13,38 +13,77 @@ class CrawlerService:
     
         )
         self.min_word_threshold = min_words_threshold
+        # thresholds for adaptive fallback
+        self.primary_bm25_threshold = 0.95
+        self.fallback_bm25_threshold = 0.33
+        self.enable_pruning_fallback = True
         
 
     async def fetch_markdown(self, url: str, user_query, enable_cache=False):
-        
-        run_config = CrawlerRunConfig(
-            cache_mode=CacheMode.ENABLED if enable_cache else CacheMode.DISABLED,
-            markdown_generator=DefaultMarkdownGenerator(
-                content_filter=BM25ContentFilter(user_query=user_query, bm25_threshold=0.33)
-            ),
-        )
-        
+        # Try primary BM25 threshold first, then fallback thresholds (adaptive)
+        thresholds = [self.primary_bm25_threshold, self.fallback_bm25_threshold]
 
         async with AsyncWebCrawler(config=self.browser_config) as crawler:
-            try:
-                result = await crawler.arun(url=url, config=run_config)
+            last_err = None
+            for i, th in enumerate(thresholds):
+                run_config = CrawlerRunConfig(
+                    cache_mode=CacheMode.ENABLED if enable_cache else CacheMode.DISABLED,
+                    markdown_generator=DefaultMarkdownGenerator(
+                        content_filter=BM25ContentFilter(user_query=user_query, bm25_threshold=th)
+                    ),
+                )
 
-                if result is None:
-                    print(f"[ERROR] Crawling failed: No result for {url}")
+                try:
+                    result = await crawler.arun(url=url, config=run_config)
+                    if result is None or not hasattr(result, 'markdown') or result.markdown is None:
+                        last_err = f"No result/markdown for {url} at bm25={th}"
+                        # try next threshold
+                        continue
+
+                    fit = result.markdown.fit_markdown or ''
+                    if len(fit) >= self.min_word_threshold:
+                        if i == 0:
+                            # primary succeeded
+                            return result.markdown.raw_markdown, fit
+                        else:
+                            print(f"[INFO] Primary BM25 missed; fallback bm25={th} succeeded for {url}")
+                            return result.markdown.raw_markdown, fit
+                    else:
+                        last_err = f"Not enough words found at bm25={th} (found {len(fit)})"
+                        # continue to next threshold
+                        continue
+                except Exception as e:
+                    last_err = str(e)
+                    continue
+
+            # If BM25 passes didn't return enough, optionally try a pruning/no-filter pass
+            if self.enable_pruning_fallback:
+                try:
+                    print(f"[INFO] BM25 fallbacks failed for {url}; trying PruningContentFilter")
+                    run_config = CrawlerRunConfig(
+                        cache_mode=CacheMode.ENABLED if enable_cache else CacheMode.DISABLED,
+                        markdown_generator=DefaultMarkdownGenerator(
+                            content_filter=PruningContentFilter()
+                        ),
+                    )
+                    result = await crawler.arun(url=url, config=run_config)
+                    if result is None or not hasattr(result, 'markdown') or result.markdown is None:
+                        print(f"[ERROR] Pruning fallback returned no markdown for {url}")
+                        return None, None
+
+                    fit = result.markdown.fit_markdown or ''
+                    if len(fit) >= self.min_word_threshold:
+                        print(f"[INFO] Pruning fallback succeeded for {url}")
+                        return result.markdown.raw_markdown, fit
+                    else:
+                        print(f"[ERROR] Pruning fallback found too little content ({len(fit)}) for {url}")
+                        return None, None
+                except Exception as e:
+                    print(f"[ERROR] Exception while pruning fallback for {url}: {e}")
                     return None, None
 
-                if not hasattr(result, 'markdown') or result.markdown is None:
-                    print(f"[ERROR] Crawling failed: No markdown attribute for {url}")
-                    return None, None
-                
-                if len(result.markdown.fit_markdown) < self.min_word_threshold:
-                    raise Exception("Not enough words found, skipping the link")
-
-                return result.markdown.raw_markdown, result.markdown.fit_markdown
-
-            except Exception as e:
-                print(f"[ERROR] Exception while crawling {url}: {e}")
-                return None, None
+            print(f"[ERROR] Exception while crawling {url}: {last_err}")
+            return None, None
 
     async def fetch_multiple_markdown(self, urls: list, user_query, enable_cache=False):
         
@@ -54,25 +93,49 @@ class CrawlerService:
             cache_mode=CacheMode.ENABLED if enable_cache else CacheMode.DISABLED,
             
             markdown_generator=DefaultMarkdownGenerator(
-                content_filter=BM25ContentFilter(user_query=user_query, bm25_threshold=0.97)
+                content_filter=BM25ContentFilter(user_query=user_query, bm25_threshold=0.95) # was 0.97
             ),
         )
         
         async with AsyncWebCrawler(config=self.browser_config) as crawler:
-            
+
             results = await crawler.arun_many(
                 urls=urls,
                 config=run_config
             )
-            
+
+            # Normalize results list by removing None entries
+            normalized = []
             for res in results:
-                if res is None or not hasattr(res, 'markdown'):
-                    results.remove(res)
-            
-            raw_markdowns = [res.markdown.raw_markdown if res is not None else "" for res in results]
-            fit_markdowns = [res.markdown.fit_markdown if res is not None else "" for res in results]
-            
-            fit_markdowns = [markdown if len(markdown) > self.min_word_threshold else None for markdown in fit_markdowns]
+                if res is None or not hasattr(res, 'markdown') or res.markdown is None:
+                    normalized.append(None)
+                else:
+                    normalized.append(res)
+
+            raw_markdowns = []
+            fit_markdowns = []
+
+            # For any entry that is missing or too short, run the single-url fallback fetch
+            for idx, res in enumerate(normalized):
+                url = urls[idx]
+                if res is None:
+                    # fallback to single fetch which has adaptive fallback
+                    rm, fm = await self.fetch_markdown(url, user_query, enable_cache=enable_cache)
+                    raw_markdowns.append(rm or "")
+                    fit_markdowns.append(fm or None)
+                    continue
+
+                raw = res.markdown.raw_markdown if res is not None else ""
+                fit = res.markdown.fit_markdown if res is not None else ""
+
+                if not fit or len(fit) < self.min_word_threshold:
+                    # try adaptive single fetch for this url
+                    rm, fm = await self.fetch_markdown(url, user_query, enable_cache=enable_cache)
+                    raw_markdowns.append(rm or raw)
+                    fit_markdowns.append(fm or None)
+                else:
+                    raw_markdowns.append(raw)
+                    fit_markdowns.append(fit)
 
             return raw_markdowns, fit_markdowns
 

@@ -12,7 +12,7 @@ def get_website_knowledge(query):
     final_links = []
     links_to_be_scraped = []
         
-    temp_links = search(query, num_results=50)
+    temp_links = search(query, num_results=100)
     
     print(temp_links)
     
