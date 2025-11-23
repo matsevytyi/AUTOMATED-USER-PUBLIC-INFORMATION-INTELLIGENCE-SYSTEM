@@ -89,9 +89,9 @@
             </div>
             <div class="chat-body card">
                 <div class="card__body">
-                    <div class="chat-controls">
-                        <label>Scope:</label>
-                        <select id="chat-scope">
+                    <div class="chat-controls" style="display:flex;align-items:center;gap:8px;">
+                        <label style="margin:0;">Scope:</label>
+                        <select id="chat-scope" class="form-control" style="width:auto;min-width:160px;">
                             <option value="report">Whole report</option>
                             <option value="datapieces">Specific datapieces</option>
                         </select>
@@ -104,7 +104,6 @@
                     <div class="chat-composer" style="margin-top:8px;">
                         <textarea id="chat-input" rows="3" class="form-control" placeholder="Ask about this report or selected datapieces..."></textarea>
                         <div style="margin-top:8px;display:flex;gap:8px;justify-content:flex-end;">
-                            <button class="btn btn--outline" id="chat-create-session-btn">New Session</button>
                             <button class="btn btn--primary" id="chat-send-btn">Send</button>
                         </div>
                     </div>
@@ -393,7 +392,7 @@
                                         </div>
                                         <div class="form-actions" style="margin-top:8px;">
                                             <button type="button" class="btn btn--primary" id="facebook-login-btn">Login & Save Cookies</button>
-                                            <button type="button" class="btn btn--outline" id="facebook-test-login-btn">Test Login</button>
+                                            <button type="button" class="btn-primary btn--muted" id="facebook-test-login-btn">Test Login</button>
                                         </div>
                                         <small style="display:block;font-size:0.9em;margin-top:8px;opacity:0.85;">Warning: provide your Facebook credentials only if you trust this server. Passwords are not stored permanently; the server uses them to obtain cookies and discards them.</small>
                                     </form>

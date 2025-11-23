@@ -1165,14 +1165,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const chatCloseBtn = document.getElementById('chat-close-btn');
     if (chatCloseBtn) chatCloseBtn.addEventListener('click', () => closeChatPanel());
 
-    const chatCreateBtn = document.getElementById('chat-create-session-btn');
-    if (chatCreateBtn) chatCreateBtn.addEventListener('click', async function() {
-        if (!AppState.chat.reportId) AppState.chat.reportId = document.getElementById('report-id')?.textContent || null;
-        if (!AppState.chat.reportId) { showNotification('No report selected', 'error'); return; }
-        await createChatSessionForReport(AppState.chat.reportId);
-        if (AppState.chat.activeSessionId) await loadSessionMessages(AppState.chat.activeSessionId);
-    });
-
     const chatSendBtn = document.getElementById('chat-send-btn');
     if (chatSendBtn) chatSendBtn.addEventListener('click', sendChatMessage);
 

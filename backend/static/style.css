@@ -867,6 +867,22 @@ select.form-control {
 .chat-bubble { margin-bottom: 8px; padding: 8px 10px; border-radius: 8px; }
 .chat-user { background: rgba(33,128,141,0.08); align-self: flex-end; }
 .chat-assistant { background: rgba(98,108,113,0.06); align-self: flex-start; }
+
+/* Muted variant for profile buttons (same size/shape as .btn-primary but translucent) */
+.profile-card .btn-primary.btn--muted,
+.profile-card button.btn-primary.btn--muted {
+  background: transparent;
+  color: var(--color-text);
+  border: 1px solid rgba(0,0,0,0.06);
+  opacity: 0.95;
+}
+
+/* Dark-mode override: slightly lighter translucent background for visibility */
+[data-color-scheme="dark"] .profile-card .btn-primary.btn--muted,
+[data-color-scheme="dark"] .profile-card button.btn-primary.btn--muted {
+  background: rgba(255,255,255,0.03);
+  border-color: rgba(255,255,255,0.06);
+}
 .profile-card button.btn--outline,
 .profile-card button.btn-outline {
   background: transparent;
