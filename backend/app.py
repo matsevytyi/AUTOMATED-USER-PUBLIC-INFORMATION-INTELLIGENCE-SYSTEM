@@ -15,13 +15,14 @@ from dateutil.relativedelta import relativedelta
 from scheduled import start_scheduler
 
 from config import Config
-from models import db, User, Report, SearchHistory, FacebookCookies
+from models import db, User, Report, SearchHistory, FacebookCookies, InformationPiece, ChatSession, ChatMessage
 from data_processing.data_cleansing_and_convertion import parse_search_results_to_information_pieces
 
 from report_generation.generate_report import init_report, generate_complete_report
 from data_collection.data_collection_wrapper import collect_data
 
 from facebook_cookie_manager import FacebookCookieManager
+from llm_abstraction import chat_with_context
 
 def create_app():
     app = Flask(__name__)
@@ -405,6 +406,119 @@ def get_facebook_cookies_status():
         'has_cookies': has_cookies, 
         'is_expired': is_expired
     }), 200
+
+
+# ---------- Datapieces & Chat endpoints ----------
+@app.route('/api/report/<report_id>/datapieces', methods=['GET'])
+@jwt_required()
+def list_datapieces(report_id):
+    try:
+        pieces = InformationPiece.query.filter_by(report_id=report_id).all()
+        items = [p.to_dict() for p in pieces]
+        return jsonify({'success': True, 'datapieces': items}), 200
+    except Exception as e:
+        print('Error listing datapieces:', e)
+        return jsonify({'success': False, 'message': 'Failed to list datapieces'}), 500
+
+
+@app.route('/api/chat/report/<report_id>/sessions', methods=['POST'])
+@jwt_required()
+def create_chat_session(report_id):
+    data = request.json or {}
+    title = data.get('title')
+    save_history = bool(data.get('save_history', True))
+    current_user_email = get_jwt_identity()
+    try:
+        # Reuse a single session per user+report
+        existing = ChatSession.query.filter_by(user_email=current_user_email, report_id=report_id).first()
+        if existing:
+            return jsonify({'success': True, 'session': existing.to_dict()}), 200
+
+        cs = ChatSession(user_email=current_user_email, report_id=report_id, title=title, save_history=save_history)
+        db.session.add(cs)
+        db.session.commit()
+        return jsonify({'success': True, 'session': cs.to_dict()}), 201
+    except Exception as e:
+        db.session.rollback()
+        print('Failed to create chat session:', e)
+        return jsonify({'success': False, 'message': 'Failed to create session'}), 500
+
+
+@app.route('/api/chat/sessions/<int:session_id>/messages', methods=['GET'])
+@jwt_required()
+def get_session_messages(session_id):
+    try:
+        msgs = ChatMessage.query.filter_by(session_id=session_id).order_by(ChatMessage.created_at.asc()).all()
+        out = [m.to_dict() for m in msgs]
+        return jsonify({'success': True, 'messages': out}), 200
+    except Exception as e:
+        print('Failed fetching messages:', e)
+        return jsonify({'success': False, 'message': 'Failed to fetch messages'}), 500
+
+
+@app.route('/api/chat/sessions/<int:session_id>/messages', methods=['POST'])
+@jwt_required()
+def post_session_message(session_id):
+    data = request.json or {}
+    user_msg = data.get('message', '').strip()
+    scope = data.get('scope', 'report')  # 'report' or 'datapieces'
+    datapiece_ids = data.get('datapiece_ids', []) or []
+    provider = data.get('provider') or None
+
+    if not user_msg:
+        return jsonify({'success': False, 'message': 'Message is required'}), 400
+
+    session = ChatSession.query.filter_by(id=session_id).first()
+    if not session:
+        return jsonify({'success': False, 'message': 'Session not found'}), 404
+
+    # Build context
+    context = []
+    try:
+        if scope == 'datapieces' and datapiece_ids:
+            context = [p.to_dict() for p in InformationPiece.query.filter(InformationPiece.id.in_(datapiece_ids)).all()]
+        else:
+            # whole report: include recent pieces for the report
+            context = [p.to_dict() for p in InformationPiece.query.filter_by(report_id=session.report_id).order_by(InformationPiece.created_at.desc()).limit(12).all()]
+    except Exception as e:
+        print('Failed loading datapiece context:', e)
+
+    # Save user message if history is enabled
+    try:
+        if session.save_history:
+            um = ChatMessage(session_id=session.id, sender='user', content=user_msg)
+            db.session.add(um)
+            db.session.commit()
+    except Exception:
+        db.session.rollback()
+
+    # Prepare messages for LLM (system + user)
+    system_prompt = {
+        'role': 'system',
+        'content': 'You are a helpful assistant that answers questions about a user report. Cite datapiece ids when referring to specific snippets.'
+    }
+    messages = [system_prompt, {'role': 'user', 'content': user_msg}]
+
+    # Call LLM abstraction with fallback to openai
+    try:
+        llm_result = chat_with_context(provider or 'groq', messages, context, fallback=['openai', 'local'])
+        reply = llm_result.get('reply') if isinstance(llm_result, dict) else str(llm_result)
+        sources = llm_result.get('sources', []) if isinstance(llm_result, dict) else []
+    except Exception as e:
+        print('LLM call failed:', e)
+        reply = 'Failed to get response from LLM.'
+        sources = []
+
+    # Save assistant reply if history is enabled
+    try:
+        if session.save_history:
+            am = ChatMessage(session_id=session.id, sender='assistant', content=reply, meta=json.dumps({'sources': sources}))
+            db.session.add(am)
+            db.session.commit()
+    except Exception:
+        db.session.rollback()
+
+    return jsonify({'success': True, 'assistant': reply, 'sources': sources}), 200
 
     
 # ------------ Other Settings ------------
