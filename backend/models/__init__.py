@@ -73,6 +73,8 @@ class InformationPiece(db.Model):
     relevance_score = db.Column(db.Float, nullable=True) # because is added later
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_verified_by_user = db.Column(db.Boolean, default=False)
+    # Short chat context and human-friendly title
+    snippet = db.Column(db.Text, nullable=True)
     
     def to_dict(self):
         return {
@@ -82,6 +84,7 @@ class InformationPiece(db.Model):
             'source_id': self.source_id,
             'source': self.source,
             'content': self.content,
+            'snippet': self.snippet,
             'relevance_score': self.relevance_score,
             'created_at': self.created_at.isoformat() + 'Z'
         }

@@ -63,6 +63,7 @@ def generate_complete_report(db, report_id: str, information_pieces: List[Inform
         
         # Create finding entry
         finding = {
+            "id": piece.id,
             "source": source_name,
             "category": category_name,
             "info": piece.content[:200] + ("..." if len(piece.content) > 200 else ""),
@@ -72,6 +73,19 @@ def generate_complete_report(db, report_id: str, information_pieces: List[Inform
             "relevance_score": piece.relevance_score or 0.5
         }
         detailed_findings.append(finding)
+        
+        # Store a short plaintext snippet on the InformationPiece itself ot give context to assistant
+        try:
+            raw = piece.content or ''
+            snippet = raw.split('\n', 1)[0][:400]
+            piece.snippet = snippet
+            # persist changes if piece is attached to session (best-effort)
+            try:
+                db.session.merge(piece)
+            except Exception:
+                pass
+        except Exception:
+            pass
     
     # Calculate overall risk score
     overall_risk_score = calculate_overall_risk_score(risk_counts, len(information_pieces))
