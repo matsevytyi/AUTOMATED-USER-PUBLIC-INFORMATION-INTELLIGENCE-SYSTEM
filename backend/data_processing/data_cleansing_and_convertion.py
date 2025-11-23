@@ -106,15 +106,17 @@ def multiple_create_dict_information_piece(item_dict, source_id, report_id, db):
             # get/create category_id on the fly
             category_id, weight = get_or_create_category(db, name=item[1])
             
-            info_piece = create_string_information_piece(item[0], source_id, report_id, category_id=category_id, relevance_score=weight, source=link)
+            info_piece = create_string_information_piece(item[0], source_id, report_id, category_id=category_id, relevance_score=weight, source=link, snippet=valuable_text)
             if info_piece:
                 result.append(info_piece)
     
     return result
     
 
-def create_string_information_piece(content, source_id, report_id, category_id=None, relevance_score=0, source="facebook.com"):
+def create_string_information_piece(content, source_id, report_id, category_id=None, relevance_score=0, source="facebook.com", snippet=None) -> InformationPiece:
     """Create InformationPiece from string content"""
+    
+    print("creating info piece for content:", content, "with snippet:", snippet)
     
     return InformationPiece(
         report_id=report_id,
@@ -123,7 +125,8 @@ def create_string_information_piece(content, source_id, report_id, category_id=N
         relevance_score=relevance_score,
         source=source,
         content=content.strip(),
-        created_at=datetime.utcnow()
+        created_at=datetime.utcnow(),
+        snippet=snippet
     )
     
 # data extraction functions
