@@ -831,6 +831,139 @@ document.addEventListener('DOMContentLoaded', function() {
         postFacebookCookies(cookiesObj);
     });
 
+    // Facebook credentials login (uses server endpoint that invokes Selenium)
+    const fbLoginBtn = document.getElementById('facebook-login-btn');
+    const fbTestBtn = document.getElementById('facebook-test-login-btn');
+    if (fbLoginBtn) {
+        fbLoginBtn.addEventListener('click', async function() {
+            const status = document.getElementById('facebook-cookies-status');
+            if (!AppState || !AppState.jwt) {
+                showNotification('Please sign in to your account first', 'error');
+                return;
+            }
+
+            const login = document.getElementById('fb-login')?.value.trim();
+            const password = document.getElementById('fb-password')?.value || '';
+            const headless = !!document.getElementById('fb-headless')?.checked;
+
+            if (!login || !password) {
+                if (status) { status.textContent = 'Please enter Facebook login and password'; status.style.color = 'var(--color-error)'; }
+                return;
+            }
+
+            setButtonLoading(fbLoginBtn, true);
+            try {
+                const res = await fetch('/api/profile/facebook/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + AppState.jwt
+                    },
+                    body: JSON.stringify({ login, password, headless })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showNotification(data.message || 'Facebook login successful; cookies saved', 'success');
+                    if (status) { status.textContent = 'Cookies saved and valid'; status.style.color = 'var(--color-success)'; }
+                    // refresh status and redirect shortly so user sees notification
+                    await getFacebookCookiesStatus();
+                    setTimeout(() => showPage('dashboard'), 500);
+                } else {
+                    const msg = data.message || data.error || 'Login failed';
+                    showNotification(msg, 'error');
+                    if (status) { status.textContent = msg; status.style.color = 'var(--color-error)'; }
+                }
+            } catch (e) {
+                console.error('FB login request failed', e);
+                showNotification('Request failed', 'error');
+                if (status) { status.textContent = 'Request failed'; status.style.color = 'var(--color-error)'; }
+            } finally {
+                setButtonLoading(fbLoginBtn, false);
+                // Clear password field for safety
+                try { document.getElementById('fb-password').value = ''; } catch (e) {}
+            }
+        });
+    }
+
+    if (fbTestBtn) {
+        fbTestBtn.addEventListener('click', async function() {
+            // Test login uses same endpoint but does not redirect; shows detailed response
+            if (!AppState || !AppState.jwt) {
+                showNotification('Please sign in to your account first', 'error');
+                return;
+            }
+            const login = document.getElementById('fb-login')?.value.trim();
+            const password = document.getElementById('fb-password')?.value || '';
+            const headless = !!document.getElementById('fb-headless')?.checked;
+
+            if (!login || !password) {
+                showNotification('Enter login and password to test', 'error');
+                return;
+            }
+
+            setButtonLoading(fbTestBtn, true);
+            try {
+                const res = await fetch('/api/profile/facebook/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + AppState.jwt
+                    },
+                    body: JSON.stringify({ login, password, headless })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showNotification('Test login succeeded and cookies saved', 'success');
+                    await getFacebookCookiesStatus();
+                } else {
+                    showNotification(data.message || data.error || 'Login/test failed', 'error');
+                    const status = document.getElementById('facebook-cookies-status');
+                    if (status) { status.textContent = data.message || data.error || 'Login/test failed'; status.style.color = 'var(--color-error)'; }
+                }
+            } catch (e) {
+                console.error('FB test request failed', e);
+                showNotification('Request failed', 'error');
+            } finally {
+                setButtonLoading(fbTestBtn, false);
+                try { document.getElementById('fb-password').value = ''; } catch (e) {}
+            }
+        });
+    }
+
+    // Facebook OAuth button: open popup to start OAuth flow. We include JWT in state query param.
+    const fbOauthBtn = document.getElementById('facebook-oauth-btn');
+    if (fbOauthBtn) {
+        fbOauthBtn.disabled = false;
+        fbOauthBtn.addEventListener('click', function() {
+            const token = AppState && AppState.jwt ? AppState.jwt : '';
+            const oauthUrl = '/api/auth/facebook/start' + (token ? ('?state=' + encodeURIComponent(token)) : '');
+            const w = window.open(oauthUrl, 'fb_oauth', 'width=600,height=700');
+            if (!w) {
+                showNotification('Popup blocked — please allow popups for this site', 'error');
+                return;
+            }
+        });
+    }
+
+    // Listen for messages from OAuth popup
+    window.addEventListener('message', function(ev) {
+        try {
+            if (!ev.data || ev.data.type !== 'facebook-oauth') return;
+            const payload = ev.data.payload || {};
+            if (payload.success) {
+                showNotification('Facebook linked successfully', 'success');
+                // refresh cookies/status
+                getFacebookCookiesStatus();
+                // optionally redirect to dashboard
+                setTimeout(() => showPage('dashboard'), 600);
+            } else {
+                showNotification(payload.message || 'Facebook auth failed', 'error');
+            }
+        } catch (e) {
+            console.warn('Invalid oauth message', e);
+        }
+    });
+
     // Save interface preferences (theme/compact/notifications)
     const saveInterfaceBtn = document.getElementById('save-interface-btn');
     if (saveInterfaceBtn) {
@@ -856,7 +989,8 @@ document.addEventListener('DOMContentLoaded', function() {
             } catch (e) {}
 
             // redirect to dashboard after saving
-            showPage('dashboard');
+            showNotification('Interface preferences saved', 'success');
+            setTimeout(() => showPage('dashboard'), 500);
         });
     }
 
