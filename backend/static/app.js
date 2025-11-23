@@ -108,9 +108,72 @@ function appendMessageToChatDOM(sender, content) {
     if (!container) return;
     const el = document.createElement('div');
     el.className = 'chat-bubble ' + (sender === 'user' ? 'chat-user' : 'chat-assistant');
-    el.textContent = content;
+    // If assistant returned HTML-like content, sanitize and render it; otherwise render plain text
+    try {
+        if (sender === 'assistant' && typeof content === 'string' && /<[a-z][\s\S]*>/i.test(content)) {
+            el.innerHTML = sanitizeAllowedHtml(content);
+        } else {
+            el.textContent = content;
+        }
+    } catch (e) {
+        el.textContent = content;
+    }
     container.appendChild(el);
     container.scrollTop = container.scrollHeight;
+}
+
+// Lightweight HTML sanitizer: allow a small set of tags and safe attributes (href on <a> with http(s)).
+function sanitizeAllowedHtml(html) {
+    if (!html) return '';
+    const parser = new DOMParser();
+    const doc = parser.parseFromString('<div>' + html + '</div>', 'text/html');
+    const container = doc.body.firstChild;
+
+    const allowedTags = new Set(['STRONG','B','EM','I','A','CODE','UL','OL','LI','P','BR']);
+
+    const walk = (node) => {
+        const children = Array.from(node.childNodes);
+        for (const child of children) {
+            if (child.nodeType === Node.ELEMENT_NODE) {
+                if (!allowedTags.has(child.tagName)) {
+                    // replace element with its text content
+                    const txt = document.createTextNode(child.textContent);
+                    node.replaceChild(txt, child);
+                    continue;
+                }
+
+                // sanitize attributes: only allow href on <a>
+                const attrs = Array.from(child.attributes).map(a => a.name);
+                for (const a of attrs) {
+                    if (child.tagName === 'A' && a === 'href') {
+                        const href = child.getAttribute('href') || '';
+                        try {
+                            const u = new URL(href, window.location.href);
+                            if (u.protocol !== 'http:' && u.protocol !== 'https:') {
+                                child.removeAttribute('href');
+                            } else {
+                                child.setAttribute('target', '_blank');
+                                child.setAttribute('rel', 'noopener noreferrer');
+                            }
+                        } catch (e) {
+                            child.removeAttribute('href');
+                        }
+                    } else {
+                        child.removeAttribute(a);
+                    }
+                }
+
+                walk(child);
+            } else if (child.nodeType === Node.TEXT_NODE) {
+                // ok
+            } else {
+                node.removeChild(child);
+            }
+        }
+    };
+
+    walk(container);
+    return container.innerHTML;
 }
 
 async function sendChatMessage() {
