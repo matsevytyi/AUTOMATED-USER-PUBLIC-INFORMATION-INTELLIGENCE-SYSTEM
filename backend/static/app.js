@@ -176,6 +176,18 @@ function sanitizeAllowedHtml(html) {
     return container.innerHTML;
 }
 
+// Truncate text to a maximum length, adding an ellipsis if truncated
+function truncateText(text, maxLen = 100) {
+    try {
+        if (!text) return '';
+        const s = String(text);
+        if (s.length <= maxLen) return s;
+        return s.slice(0, maxLen) + '…';
+    } catch (e) {
+        return text;
+    }
+}
+
 async function sendChatMessage() {
     const input = document.getElementById('chat-input');
     if (!input) return;
@@ -699,7 +711,12 @@ function displayReport(report) {
     // Update detailed findings
     const findingsList = document.getElementById('findings-list');
     if (findingsList) {
-        findingsList.innerHTML = report.detailed_findings.map(finding => `
+        findingsList.innerHTML = report.detailed_findings.map(finding => {
+            const linkHtml = (finding.url && finding.url !== 'N/A')
+                ? `<a href="${finding.url}" target="_blank" class="finding-url">${truncateText(finding.url, 100)}</a>`
+                : '<span class="finding-url">Source not public</span>';
+
+            return `
             <div class="finding-item risk-${finding.risk}" data-piece-id="${finding.id}" data-piece-name="${finding.info}">
                 <div class="finding-header">
                     <div class="finding-source">${finding.source}</div>
@@ -708,11 +725,12 @@ function displayReport(report) {
                 <div class="finding-info">${finding.info}</div>
                 <div class="finding-meta">
                     <div class="finding-timestamp">Found: ${new Date(finding.timestamp).toLocaleDateString()}</div>
-                    ${finding.url !== 'N/A' ? `<a href="https://${finding.url}" target="_blank" class="finding-url">${finding.url}</a>` : '<span class="finding-url">Source not public</span>'}
+                    ${linkHtml}
                     <button class="btn-inline-ask btn btn--outline" data-piece-id="${finding.id}" style="margin-left:8px;">Ask</button>
                 </div>
             </div>
-        `).join('');
+        `;
+        }).join('');
     }
     
     // Update recommendations
