@@ -6,7 +6,9 @@ import sys
 
 models_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../'))
 sys.path.append(models_path)
-from backend.models import InformationPiece, DiscoverSource, InformationCategory
+from backend.models import InformationPiece, DiscoverSource, InformationCategory, Report
+
+from backend.data_processing.formulas import total_relevance_score
 
 import re
 from typing import List, Tuple
@@ -36,6 +38,8 @@ def parse_search_results_to_information_pieces(data, report_id, db):
     web_search_source_id = get_or_create_source(db=db, name="Web Search")
     platform_scraping_source_id = get_or_create_source(db=db, name="Social Media")
     
+    report_query = db.session.query(Report).filter_by(report_id=report_id).first().user_query
+    
     # flatten the  structure and process each item
     for sublist in data:
 
@@ -43,13 +47,13 @@ def parse_search_results_to_information_pieces(data, report_id, db):
             for item in sublist:
                 if isinstance(item, str) and item.strip():
                     # simple string - facebook scraping
-                    info_piece = multiple_create_string_information_piece(item, platform_scraping_source_id, report_id, db)
+                    info_piece = multiple_create_string_information_piece(db, item, platform_scraping_source_id, report_id, report_query)
                     if info_piece:
                         information_pieces.extend(info_piece)
                         
                 elif isinstance(item, dict):
                     #  structured search results - general web search
-                    info_piece = multiple_create_dict_information_piece(item, web_search_source_id, report_id, db)
+                    info_piece = multiple_create_dict_information_piece(db, item, web_search_source_id, report_id, report_query)
                     if info_piece:
                         information_pieces.extend(info_piece)
     
@@ -63,7 +67,7 @@ def parse_search_results_to_information_pieces(data, report_id, db):
 
 # helper conversion functions
 
-def multiple_create_string_information_piece(content, source_id, report_id, db) -> List[InformationPiece]:
+def multiple_create_string_information_piece(db, content, source_id, report_id, report_query) -> List[InformationPiece]: # facebook
     
     """Create InformationPiece from string content"""
     
@@ -74,16 +78,15 @@ def multiple_create_string_information_piece(content, source_id, report_id, db) 
     for item in extracted_content:
         if len(item[0]) > 0:
             
-            category_id, weight = get_or_create_category(db, name=item[1])
-            
-            info_piece = create_string_information_piece(item[0], source_id, report_id, category_id=category_id, relevance_score=weight)
+            # TODO: pass facebook search request/profile from fbn scraping
+            info_piece = create_string_information_piece(db, item[0], source_id, report_id, category_name = item[1], source="https://www.facebook.com", snippet=content, report_query=report_query)
             
             if info_piece:
                 result.append(info_piece)
     
     return result
 
-def multiple_create_dict_information_piece(item_dict, source_id, report_id, db):
+def multiple_create_dict_information_piece(db, item_dict, source_id, report_id, report_query): # web search
     """Create InformationPiece from dictionary data"""
     
     result = []
@@ -103,20 +106,24 @@ def multiple_create_dict_information_piece(item_dict, source_id, report_id, db):
     for item in extracted_content:
         if len(item[0]) > 0:
             
-            # get/create category_id on the fly
-            category_id, weight = get_or_create_category(db, name=item[1])
+            info_piece = create_string_information_piece(db, item[0], source_id, report_id, category_name = item[1], source=link, snippet=valuable_text, report_query=report_query)
             
-            info_piece = create_string_information_piece(item[0], source_id, report_id, category_id=category_id, relevance_score=weight, source=link, snippet=valuable_text)
             if info_piece:
                 result.append(info_piece)
     
     return result
     
 
-def create_string_information_piece(content, source_id, report_id, category_id=None, relevance_score=0, source="facebook.com", snippet=None) -> InformationPiece:
+def create_string_information_piece(db, content, source_id, report_id, category_name = None,  source="facebook.com", snippet=None, report_query=None) -> InformationPiece:
     """Create InformationPiece from string content"""
     
-    print("creating info piece for content:", content, "with snippet:", snippet)
+    category_id, type_weight = get_or_create_category(db, name=category_name)
+    
+    relevance_score = total_relevance_score(user_query=report_query, extracted_content=content, extracted_context=snippet or "")
+    
+    relevance_score *= type_weight
+    
+    print("creating info piece for content:", content, "with score:", relevance_score)
     
     return InformationPiece(
         report_id=report_id,
