@@ -377,7 +377,7 @@
 
                                 <!-- Method 0: Credentials-based login (uses server-side Selenium to obtain cookies) -->
                                 <div class="method-option">
-                                    <h5>Method 3: Login with Facebook (Credentials)</h5>
+                                    <h5>Method 1: Login with Facebook (Credentials)</h5>
                                     <form id="facebook-login-form" class="form-section" onsubmit="return false;">
                                         <div class="form-group">
                                             <label for="fb-login">Facebook login (email or phone)</label>
@@ -390,27 +390,28 @@
                                         <div class="form-group">
                                             <label class="checkbox-option"><input type="checkbox" id="fb-headless" checked> Run headless (recommended)</label>
                                         </div>
-                                        <div class="form-actions" style="margin-top:8px;">
+                                        <div class="form-actions" style="margin-top:8px;display:flex;gap:8px;align-items:center;">
                                             <button type="button" class="btn btn--primary" id="facebook-login-btn">Login & Save Cookies</button>
-                                            <button type="button" class="btn btn--outline" id="facebook-test-login-btn">Test Login</button>
+                                            <button type="button" class="btn btn--secondary" id="facebook-test-login-btn">Test Login</button>
                                         </div>
                                         <small style="display:block;font-size:0.9em;margin-top:8px;opacity:0.85;">Warning: provide your Facebook credentials only if you trust this server. Passwords are not stored permanently; the server uses them to obtain cookies and discards them.</small>
+                                        <br>
                                     </form>
                                 </div>
 
                                 <!-- Method 1: Paste JSON -->
                                 <div class="method-option">
-                                    <h5>Method 1: Paste Cookies (JSON)</h5>
+                                    <h5>Method 2: Paste Cookies (JSON)</h5>
                                     <textarea id="cookies-json" placeholder='{"c_user":"123456","xs":"abc123","...":"..."}' rows="6" class="monospace"></textarea>
                                     <br>
-                                    <button type="button" class="btn-secondary" id="paste-cookies-btn">Save Cookies from JSON</button>
+                                    <button type="button" class="btn btn--primary" id="paste-cookies-btn">Save Cookies from JSON</button>
                                 </div>
+                                <br>
                                 <br>
 
                                 <!-- Method 2: Individual Cookies -->
                                 <div class="method-option">
-                                    <h5>Method 2: Enter Individual Cookies</h5>
-                                    <br>
+                                    <h5>Method 3: Enter Individual Cookies</h5>
                                     <div class="form-group">
                                         <label for="cookie-c-user">c_user (required)</label>
                                         <input type="text" id="cookie-c-user" placeholder="Your FB user ID">
@@ -421,18 +422,18 @@
                                     </div>
                                     <div class="form-group">
                                         <label for="cookie-c-user">datr (required)</label>
-                                        <input type="text" id="cookie-datr" placeholder="Your FB user ID">
+                                        <input type="text" id="cookie-datr" placeholder="Your c-user token">
                                     </div>
                                     <div class="form-group">
                                         <label for="cookie-xs">fr (required)</label>
-                                        <input type="text" id="cookie-fr" placeholder="Your xs token">
+                                        <input type="text" id="cookie-fr" placeholder="Your fr token">
                                     </div>
                                     <div class="form-group">
                                         <label for="cookie-xs">spin (required)</label>
-                                        <input type="text" id="cookie-spin" placeholder="Your xs token">
+                                        <input type="text" id="cookie-spin" placeholder="Your spin token">
                                     </div>
                                     
-                                    <button type="button" class="btn-secondary" id="save-cookies-btn">Save Individual Cookies</button>
+                                    <button type="button" class="btn btn--primary" id="save-cookies-btn">Save Individual Cookies</button>
                                 </div>
 
                                 <br>
