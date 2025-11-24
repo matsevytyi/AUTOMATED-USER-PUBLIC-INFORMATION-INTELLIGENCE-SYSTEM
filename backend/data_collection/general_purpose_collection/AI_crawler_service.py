@@ -15,7 +15,7 @@ class CrawlerService:
         self.min_word_threshold = min_words_threshold
         # thresholds for adaptive fallback
         self.primary_bm25_threshold = 0.95
-        self.fallback_bm25_threshold = 0.33
+        self.fallback_bm25_threshold = 0.7
         self.enable_pruning_fallback = True
         
 
