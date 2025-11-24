@@ -711,9 +711,24 @@ function displayReport(report) {
     // Update detailed findings
     const findingsList = document.getElementById('findings-list');
     if (findingsList) {
-        findingsList.innerHTML = report.detailed_findings.map(finding => {
+        // sort findings by risk: high -> medium -> low, then by recency
+        const findings = Array.isArray(report.detailed_findings) ? report.detailed_findings.slice() : [];
+        const riskOrder = { 'high': 3, 'medium': 2, 'low': 1 };
+        findings.sort((a, b) => {
+            const ra = (a.risk || '').toString().toLowerCase();
+            const rb = (b.risk || '').toString().toLowerCase();
+            const va = riskOrder[ra] || 0;
+            const vb = riskOrder[rb] || 0;
+            if (va !== vb) return vb - va; // higher risk first
+            // fallback: newer first
+            const ta = new Date(a.timestamp || 0).getTime();
+            const tb = new Date(b.timestamp || 0).getTime();
+            return tb - ta;
+        });
+
+        findingsList.innerHTML = findings.map(finding => {
             const linkHtml = (finding.url && finding.url !== 'N/A')
-                ? `<a href="${finding.url}" target="_blank" class="finding-url">${truncateText(finding.url, 100)}</a>`
+                ? `<a href="${finding.url}" target="_blank" class="finding-url" title="${finding.url}">${truncateText(finding.url, 100)}</a>`
                 : '<span class="finding-url">Source not public</span>';
 
             return `
@@ -1109,18 +1124,26 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     if (fbTestBtn) {
+        // Ensure button is enabled and attach a robust handler
+        try { fbTestBtn.disabled = false; } catch (e) {}
         fbTestBtn.addEventListener('click', async function() {
-            // Test login uses same endpoint but does not redirect; shows detailed response
+            const statusEl = document.getElementById('facebook-cookies-status');
             if (!AppState || !AppState.jwt) {
                 showNotification('Please sign in to your account first', 'error');
+                if (statusEl) { statusEl.textContent = 'Not signed in'; statusEl.style.color = 'var(--color-error)'; }
                 return;
             }
-            const login = document.getElementById('fb-login')?.value.trim();
-            const password = document.getElementById('fb-password')?.value || '';
-            const headless = !!document.getElementById('fb-headless')?.checked;
+
+            const loginInput = document.getElementById('fb-login');
+            const passInput = document.getElementById('fb-password');
+            const headlessInput = document.getElementById('fb-headless');
+            const login = loginInput ? loginInput.value.trim() : '';
+            const password = passInput ? passInput.value : '';
+            const headless = headlessInput ? !!headlessInput.checked : false;
 
             if (!login || !password) {
                 showNotification('Enter login and password to test', 'error');
+                if (statusEl) { statusEl.textContent = 'Enter login and password'; statusEl.style.color = 'var(--color-error)'; }
                 return;
             }
 
@@ -1134,21 +1157,26 @@ document.addEventListener('DOMContentLoaded', function() {
                     },
                     body: JSON.stringify({ login, password, headless })
                 });
-                const data = await res.json();
-                if (data.success) {
-                    showNotification('Test login succeeded and cookies saved', 'success');
+
+                let data = null;
+                try { data = await res.json(); } catch (e) { data = null; }
+
+                if (res.ok && data && data.success) {
+                    showNotification(data.message || 'Test login succeeded and cookies saved', 'success');
+                    if (statusEl) { statusEl.textContent = 'Cookies saved and valid'; statusEl.style.color = 'var(--color-success)'; }
                     await getFacebookCookiesStatus();
                 } else {
-                    showNotification(data.message || data.error || 'Login/test failed', 'error');
-                    const status = document.getElementById('facebook-cookies-status');
-                    if (status) { status.textContent = data.message || data.error || 'Login/test failed'; status.style.color = 'var(--color-error)'; }
+                    const msg = (data && (data.message || data.error)) || `Test failed (status ${res.status})`;
+                    showNotification(msg, 'error');
+                    if (statusEl) { statusEl.textContent = msg; statusEl.style.color = 'var(--color-error)'; }
                 }
             } catch (e) {
                 console.error('FB test request failed', e);
                 showNotification('Request failed', 'error');
+                if (statusEl) { statusEl.textContent = 'Request failed'; statusEl.style.color = 'var(--color-error)'; }
             } finally {
                 setButtonLoading(fbTestBtn, false);
-                try { document.getElementById('fb-password').value = ''; } catch (e) {}
+                try { if (document.getElementById('fb-password')) document.getElementById('fb-password').value = ''; } catch (e) {}
             }
         });
     }
