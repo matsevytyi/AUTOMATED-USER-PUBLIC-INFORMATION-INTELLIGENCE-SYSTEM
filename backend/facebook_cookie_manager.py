@@ -171,7 +171,7 @@ def login_with_credentials(login: str, password: str, headless: bool = True, wai
 {"c_user":"100023014805164",
     "xs":"22%3A4XJeCa-x5wim4Q%3A2%3A1749653584%3A-1%3A-1%3A%3AAcUXpVYZcsxTBRE36-lFVO2lXisFfm33AieqFjGahCE",
     "datr": "NJhJaIAAgvnb3W5fqWTbQ3Eu",
-    "fr": "1vq973m9m09UI7hHr.AWchAR9j2aQPhYs5ue08n6bqP7Oiyt9X6CC56KYkIQGB6_6pYc8.Bo0t8U..AAA.0.0.BpHuTw.AWeCBdNi_z_qik3A1ebQbLViFTU",
+    "fr": "1vq973m9m09UI7hHr.AWchAR9j2aQPhYs5ue08n6bqP7Oiyt9X6CC56KYkIQGB6_6pYc8.Bo0t8U..AAA.0.0.BpHuTw.AWeCBdNi_z_qik3A1ebQbLViFTU", # not needed
     "sb": "6-0mZidilwynboWT049OrT-u"
     }
 """

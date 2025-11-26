@@ -155,7 +155,6 @@ if __name__ == '__main__':
     posts = fb.obtain_profiles("Andrii Matsevytyi")
 
     fb.close()
-    print(posts)
     
 
     # print("Processing posts...")

@@ -33,16 +33,9 @@ def search(query: str, num_results: int = 5) -> list:
         f"https://www.googleapis.com/customsearch/v1?&key={GOOGLE_API_KEY}&cx={GOOGLE_CX}&q={query}"
     )
     
-    print(url)
-    
     response = requests.get(url, headers=headers)
     
-    print(response)
-
-    
     results = response.json()
-    
-    print(results)
 
     links = []
     for item in results.get("items", []):

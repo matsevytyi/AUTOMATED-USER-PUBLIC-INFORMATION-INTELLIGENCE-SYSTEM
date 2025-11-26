@@ -558,7 +558,7 @@ async function persistThemeToServer(theme) {
     // Try to save preference server-side if logged in; ignore errors
     try {
         if (!AppState || !AppState.jwt) return;
-        await fetch('/api/settings/theme', {
+        await fetch('/api/profile/theme', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

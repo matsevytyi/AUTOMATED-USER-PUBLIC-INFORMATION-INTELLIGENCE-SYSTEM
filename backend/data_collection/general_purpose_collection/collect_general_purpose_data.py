@@ -14,8 +14,6 @@ def get_website_knowledge(query):
         
     temp_links = search(query, num_results=100)
     
-    print(temp_links)
-    
     for link in temp_links:
         link["bm25_filter"] = query
         
