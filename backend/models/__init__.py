@@ -76,6 +76,8 @@ class InformationPiece(db.Model):
     # Short chat context and human-friendly title
     snippet = db.Column(db.Text, nullable=True)
     
+    repetition_count = db.Column(db.Integer, default=1)
+    
     def to_dict(self):
         return {
             'id': self.id,

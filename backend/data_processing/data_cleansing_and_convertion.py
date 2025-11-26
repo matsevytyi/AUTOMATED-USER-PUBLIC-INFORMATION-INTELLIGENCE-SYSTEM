@@ -19,12 +19,14 @@ from typing import List, Tuple
 nlp = pipeline("ner", model=Config.NER_MODEL, grouped_entities=True)
 categories_and_weights = {}
 
+# cache = { norm content : full item }
+_cache = {}
+
 
 def parse_search_results_to_information_pieces(data, report_id, db):
     """
     Parse the nested search results data and create InformationPiece objects
     """
-    information_pieces = []
 
     # obtain source ids
     web_search_source_id = get_or_create_source(db=db, name="Web Search")
@@ -36,52 +38,50 @@ def parse_search_results_to_information_pieces(data, report_id, db):
     for sublist in data:
 
         if isinstance(sublist, list):
-            for item in sublist:
+            for item in sublist:                
                 if isinstance(item, str) and item.strip():
                     # simple string - facebook scraping
-                    info_piece = multiple_create_string_information_piece(db, item, platform_scraping_source_id, report_id, report_query)
-                    if info_piece:
-                        information_pieces.extend(info_piece)
+                    multiple_create_string_information_piece(db, item, platform_scraping_source_id, report_id, report_query)
                         
                 elif isinstance(item, dict):
                     #  structured search results - general web search
-                    info_piece = multiple_create_dict_information_piece(db, item, web_search_source_id, report_id, report_query)
-                    if info_piece:
-                        information_pieces.extend(info_piece)
+                    multiple_create_dict_information_piece(db, item, web_search_source_id, report_id, report_query)
     
     # Save all infopieces to database
-    print(f"Saving {len(information_pieces)} information pieces to database")
-    for piece in information_pieces:
+    answer_list = _cache.values()
+    print(f"Saving {len(answer_list)} information pieces to database")
+    for piece in answer_list:
         db.session.add(piece)
     
     db.session.commit()
-    return information_pieces
+    return answer_list
 
 # helper conversion functions
 
-def multiple_create_string_information_piece(db, content, source_id, report_id, report_query) -> List[InformationPiece]: # facebook
+def multiple_create_string_information_piece(db, content, source_id, report_id, report_query): # facebook
     
     """Create InformationPiece from string content"""
-    
-    result = []
     
     extracted_content = extract_entities_from_data(content)
     
     for item in extracted_content:
         if len(item[0]) > 0:
             
-            # TODO: pass facebook search request/profile from fbn scraping
-            info_piece = create_string_information_piece(db, item[0], source_id, report_id, category_name = item[1], source="https://www.facebook.com", snippet=content, report_query=report_query)
+            info_piece = create_string_information_piece(db, item[0], source_id, report_id, category_name = item[1], source=link, snippet=valuable_text, report_query=report_query)
             
             if info_piece:
-                result.append(info_piece)
-    
-    return result
+                processed_item = item[0].lower().strip()
+                if processed_item in _cache.keys():
+                    print("Skipping duplicate content:", processed_item)
+                    # increment repetition count
+                    _cache[processed_item].repetition_count += 1
+                    continue 
+                
+                else: 
+                    _cache[processed_item] = info_piece
 
 def multiple_create_dict_information_piece(db, item_dict, source_id, report_id, report_query): # web search
     """Create InformationPiece from dictionary data"""
-    
-    result = []
 
     # Extract information from the dictionary
     if type(item_dict) == dict and item_dict.get('valuable_text'):
@@ -100,14 +100,25 @@ def multiple_create_dict_information_piece(db, item_dict, source_id, report_id, 
             
             info_piece = create_string_information_piece(db, item[0], source_id, report_id, category_name = item[1], source=link, snippet=valuable_text, report_query=report_query)
             
-            if info_piece:
-                result.append(info_piece)
+            if info_piece and type(info_piece) == InformationPiece:
+                processed_item = item[0].lower().strip()
+                if processed_item in _cache.keys():
+                    print("Skipping duplicate content:", processed_item)
+                    # increment repetition count
+                    _cache[processed_item].repetition_count += 1
+                    continue
+                else:
+                    _cache[processed_item] = info_piece
     
-    return result
     
 
 def create_string_information_piece(db, content, source_id, report_id, category_name = None,  source="facebook.com", snippet=None, report_query=None) -> InformationPiece:
     """Create InformationPiece from string content"""
+    
+    if report_query and content:
+        if report_query.strip().lower() in content.strip().lower() or content.strip().lower() in report_query.strip().lower():
+            print("Skipping content as it matches the report query:", content)
+            return None
     
     category_id, type_weight = get_or_create_category(db, name=category_name)
     
@@ -125,7 +136,8 @@ def create_string_information_piece(db, content, source_id, report_id, category_
         source=source,
         content=content.strip(),
         created_at=datetime.utcnow(),
-        snippet=snippet
+        snippet=snippet,
+        repetition_count=1
     )
     
 # data extraction functions
