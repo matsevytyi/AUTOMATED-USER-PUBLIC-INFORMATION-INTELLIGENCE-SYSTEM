@@ -1,0 +1,46 @@
+# --- models ---
+semantic_model: sentence-transformers/all-MiniLM-L6-v2
+
+NER_model: Davlan/bert-base-multilingual-cased-ner-hrl
+
+available_assistant_models:
+  - groq:
+      - llama-3.3-70b-versatile      # best
+      - openai/gpt-oss-120b          # better but more expensive
+      - qwen3-32b                     # best performance-to-cost ratio
+      - groq/compound-mini            # ultrafast
+
+  - Local_ollama:
+      - mistral-nemo:latest
+      - mixtral:8x7b
+      - phi3:medium
+      - phi3:mini
+
+  - OpenAI:
+      - gpt-3.5-turbo
+
+
+# --- filter details ---
+
+# Search and retrieval
+BM_25_primary_threshold: 0.95
+BM_25_secondary_threshold: 0.9
+use_pruning_filter_backup: false
+
+# Per-report calculations
+applied_report_query_matching_mode:  combined # fuzzy, semantic, combined
+fuzzy_threshold: 0.75
+semantic_threshold: 0.8
+
+# Per-infopiece calculations
+name_coefficient: 0.4         # alpha
+context_coefficient: 0.6       # beta
+
+category_weights:
+  contact_info: 9
+  financial_info: 10
+  professional: 5
+  location: 9
+  social_connections: 5
+  public_statement: 5
+  personal_identifier: 10

@@ -3,6 +3,8 @@ from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
 from crawl4ai.content_filter_strategy import PruningContentFilter,BM25ContentFilter
 from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
 
+from config import Config
+
 class CrawlerService:
     def __init__(self, min_words_threshold=2):
         self.browser_config = BrowserConfig(
@@ -14,9 +16,9 @@ class CrawlerService:
         )
         self.min_word_threshold = min_words_threshold
         # thresholds for adaptive fallback
-        self.primary_bm25_threshold = 0.95
-        self.fallback_bm25_threshold = 0.7
-        self.enable_pruning_fallback = True
+        self.primary_bm25_threshold = Config.BM_25_PRIMARY_THRESHOLD
+        self.fallback_bm25_threshold = Config.BM_25_SECONDARY_THRESHOLD
+        self.enable_pruning_fallback = Config.USE_PRUNING_FILTER_BACKUP
         
 
     async def fetch_markdown(self, url: str, user_query, enable_cache=False):

@@ -6,15 +6,8 @@ from rapidfuzz.distance import Levenshtein
 from sentence_transformers import SentenceTransformer, util
 import math
 
-# Load sentence transformer once
-_EMBEDDING_MODEL = None
+from config import Config
 
-
-def get_embedding_model(name: str = "sentence-transformers/all-MiniLM-L6-v2"):
-    global _EMBEDDING_MODEL
-    if _EMBEDDING_MODEL is None:
-        _EMBEDDING_MODEL = SentenceTransformer(name)
-    return _EMBEDDING_MODEL
 
 
 # -------------------------
@@ -40,7 +33,7 @@ def semantic_score(a: str, b: str, model=None) -> float:
     """
     if not a or not b:
         return 0.0
-    model = model or get_embedding_model()
+    model = model or Config.SEMANTIC_MODEL
     emb1 = model.encode(a, convert_to_tensor=True)
     emb2 = model.encode(b, convert_to_tensor=True)
     cos = util.cos_sim(emb1, emb2).item()
@@ -48,8 +41,8 @@ def semantic_score(a: str, b: str, model=None) -> float:
 
 
 def combined_match(a: str, b: str,
-                   fuzzy_threshold: float = 0.75,
-                   semantic_threshold: float = 0.80,
+                   fuzzy_threshold: float = Config.FUZZY_THRESHOLD,
+                   semantic_threshold: float = Config.SEMANTIC_THRESHOLD,
                    model=None) -> Tuple[bool, Dict[str, float]]:
     """
     Return (triggered_bool, {'fuzzy':..., 'semantic':...})
@@ -65,9 +58,6 @@ def combined_match(a: str, b: str,
 # -------------------------
 # Relevance score (4.5.3.3)
 # -------------------------
-# α, β default values
-DEFAULT_ALPHA = 0.3  # Name match
-DEFAULT_BETA = 0.7   # Context match
 
 
 def name_match_score(target_name: str, candidate_name: str) -> float:
@@ -91,8 +81,8 @@ def context_match_score(context_a: str, context_b: str, model=None) -> float:
 def total_relevance_score(user_query: str,
                           extracted_content: str,
                           extracted_context: str,
-                          alpha: float = DEFAULT_ALPHA,
-                          beta: float = DEFAULT_BETA,
+                          alpha: float = Config.NAME_COEFFICIENT,
+                          beta: float = Config.CONTEXT_COEFFICIENT,
                           model=None) -> float:
     """
     Compute Total Relevance Score = α*Name + β*Context
@@ -102,7 +92,7 @@ def total_relevance_score(user_query: str,
     # normalize weights
     s = alpha + beta
     if s == 0:
-        alpha, beta = DEFAULT_ALPHA, DEFAULT_BETA
+        alpha, beta = Config.NAME_COEFFICIENT, Config.CONTEXT_COEFFICIENT
     else:
         alpha, beta = alpha / s, beta / s
 
@@ -111,3 +101,69 @@ def total_relevance_score(user_query: str,
 
     total = alpha * nm + beta * ctx
     return max(0.0, min(1.0, total))
+
+# -------------------------
+# Temporal Risk Adjustment (4.5.3.4)
+# -------------------------
+
+def recency_factor(published_at: Optional[datetime], now: Optional[datetime] = None) -> float:
+    """
+    Returns RecencyFactor = max(0, 1 - days_since_publication/365)
+    If published_at is None -> treat as old -> 0
+    """
+    if not published_at:
+        return 0.0
+    now = now or datetime.utcnow()
+    days = (now - published_at).days
+    rf = max(0.0, 1.0 - days / 365.0)
+    return rf
+
+
+def adjusted_risk_score(base_risk_score: float, published_at: Optional[datetime]) -> float:
+    """
+    Adjusted Risk Score = base_risk_score * (1 + RecencyFactor)
+    base_risk_score expected in [0..10] range (your r_i scale)
+    """
+    rf = recency_factor(published_at)
+    return base_risk_score * (1.0 + rf)
+
+
+# -------------------------
+# Overall Risk Score (4.5.3.1)
+# -------------------------
+
+def overall_risk_score(r_scores: List[float], weights: List[float]) -> float:
+    """
+    r_scores: list of risk scores r_i (scale 1-10)
+    weights: list of weights w_i (category weights)
+    returns weighted average (or 0 if sum weights 0)
+    """
+    if not r_scores or not weights or len(r_scores) != len(weights):
+        return 0.0
+    num = sum([r * w for r, w in zip(r_scores, weights)])
+    den = sum(weights) or 1.0
+    return num / den
+
+
+# -------------------------
+# Information Change Calculation (4.5.3.5)
+# -------------------------
+
+def change_score(new_count: int, modified_count: int, total_old_count: int) -> float:
+    """
+    Change Score = (New + Modified) / Total_old * 100%
+    If total_old_count == 0 -> return 100% if new_count>0 else 0.
+    """
+    if total_old_count <= 0:
+        return 100.0 if new_count > 0 else 0.0
+    return (new_count + modified_count) / total_old_count * 100.0
+
+
+# -------------------------
+# Exposure Breadth (4.5.3.6)
+# -------------------------
+
+def exposure_breadth(num_distinct_sources: int, total_sources_scanned: int) -> float:
+    if total_sources_scanned <= 0:
+        return 0.0
+    return (num_distinct_sources / total_sources_scanned) * 100.0

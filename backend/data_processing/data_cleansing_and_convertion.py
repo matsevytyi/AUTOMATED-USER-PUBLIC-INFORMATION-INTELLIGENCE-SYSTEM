@@ -8,24 +8,16 @@ models_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../'))
 sys.path.append(models_path)
 from backend.models import InformationPiece, DiscoverSource, InformationCategory, Report
 
+from config import Config
+
 from backend.data_processing.formulas import total_relevance_score
 
 import re
 from typing import List, Tuple
 
-model_name = "Davlan/bert-base-multilingual-cased-ner-hrl"
-nlp = pipeline("ner", model=model_name, grouped_entities=True)
-categories_and_weights = {}
 
-CATEGORY_WEIGHTS = {
-    'contact_info': 9,
-    'financial_info': 10,
-    'professional': 5,
-    'location': 9,
-    'social_connections': 5,
-    'public_statement': 5,
-    'personal_identifier': 10,
-}
+nlp = pipeline("ner", model=Config.NER_MODEL, grouped_entities=True)
+categories_and_weights = {}
 
 
 def parse_search_results_to_information_pieces(data, report_id, db):
@@ -215,7 +207,7 @@ def get_or_create_category(db, name, description=None):
 
     if category is None:
         
-        weight = CATEGORY_WEIGHTS.get(name, 0.5)
+        weight = Config.CATEGORY_WEIGHTS.get(name, 0.5)
         
         category = InformationCategory(
             name=name,
