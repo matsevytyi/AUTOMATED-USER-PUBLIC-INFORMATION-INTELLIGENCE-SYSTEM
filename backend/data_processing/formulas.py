@@ -6,8 +6,9 @@ from rapidfuzz.distance import Levenshtein
 from sentence_transformers import SentenceTransformer, util
 import math
 
-from config import Config
+from backend.utils.config import Config
 
+semantic_model = SentenceTransformer(Config.SEMANTIC_MODEL)
 
 
 # -------------------------
@@ -33,7 +34,7 @@ def semantic_score(a: str, b: str, model=None) -> float:
     """
     if not a or not b:
         return 0.0
-    model = model or Config.SEMANTIC_MODEL
+    model = model or semantic_model
     emb1 = model.encode(a, convert_to_tensor=True)
     emb2 = model.encode(b, convert_to_tensor=True)
     cos = util.cos_sim(emb1, emb2).item()

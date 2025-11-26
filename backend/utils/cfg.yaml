@@ -23,6 +23,8 @@ available_assistant_models:
 # --- filter details ---
 
 # Search and retrieval
+min_match_words_threshold: 2
+
 BM_25_primary_threshold: 0.95
 BM_25_secondary_threshold: 0.9
 use_pruning_filter_backup: false

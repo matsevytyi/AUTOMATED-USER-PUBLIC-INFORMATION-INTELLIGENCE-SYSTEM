@@ -1,7 +1,7 @@
 from models import User, Report, SearchHistory
 from data_collection.data_collection_wrapper import collect_data
 from data_processing.data_cleansing_and_convertion import parse_search_results_to_information_pieces
-from report_generation.generate_report import init_report, generate_complete_report
+from backend.data_processing.generate_report import init_report, generate_complete_report
 
 
 class ReportService:

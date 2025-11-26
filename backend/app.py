@@ -9,10 +9,10 @@ from flask_jwt_extended import JWTManager, jwt_required, get_jwt_identity
 import json
 from datetime import datetime
 
-from scheduled import start_scheduler
-from config import Config
+from backend.utils.scheduled import start_scheduler
+from backend.utils.config import Config
 from models import db, InformationPiece, ChatSession, ChatMessage
-from llm_abstraction import chat_with_context
+from backend.llm.llm_abstraction import chat_with_context
 
 # Import services
 from services import AuthService, ReportService, FacebookAuthService, ProfileService
@@ -288,7 +288,7 @@ def delete_facebook_cookies():
         return jsonify({'error': 'Failed to delete cookies'}), 500
 
 
-# ==================== CHAT ROUTES ====================
+# ==================== ASSISTANT CHAT ROUTES ====================
 
 @app.route('/api/chat/report/<report_id>/sessions', methods=['POST'])
 @jwt_required()

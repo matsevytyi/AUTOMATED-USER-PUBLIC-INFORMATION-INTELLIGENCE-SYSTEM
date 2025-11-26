@@ -8,7 +8,7 @@ models_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../'))
 sys.path.append(models_path)
 from backend.models import InformationPiece, DiscoverSource, InformationCategory, Report
 
-from config import Config
+from backend.utils.config import Config
 
 from backend.data_processing.formulas import total_relevance_score
 

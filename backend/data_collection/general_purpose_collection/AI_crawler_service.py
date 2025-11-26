@@ -3,7 +3,7 @@ from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
 from crawl4ai.content_filter_strategy import PruningContentFilter,BM25ContentFilter
 from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
 
-from config import Config
+from backend.utils.config import Config
 
 class CrawlerService:
     def __init__(self, min_words_threshold=2):
