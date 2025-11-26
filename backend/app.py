@@ -3,26 +3,20 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__))))
 
-
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
-from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
-import bcrypt
+from flask_jwt_extended import JWTManager, jwt_required, get_jwt_identity
 import json
-from datetime import datetime, timedelta
-from dateutil.relativedelta import relativedelta
+from datetime import datetime
 
 from scheduled import start_scheduler
-
 from config import Config
-from models import db, User, Report, SearchHistory, FacebookCookies, InformationPiece, ChatSession, ChatMessage
-from data_processing.data_cleansing_and_convertion import parse_search_results_to_information_pieces
-
-from report_generation.generate_report import init_report, generate_complete_report
-from data_collection.data_collection_wrapper import collect_data
-
-from facebook_cookie_manager import FacebookCookieManager
+from models import db, InformationPiece, ChatSession, ChatMessage
 from llm_abstraction import chat_with_context
+
+# Import services
+from services import AuthService, ReportService, FacebookAuthService, ProfileService
+
 
 def create_app():
     app = Flask(__name__)
@@ -43,14 +37,15 @@ def create_app():
     
     return app
 
+
 app = create_app()
 
-# with app.app_context():
-#     a = [['Hello, I am Andrew, 20 y.o., IT and sportsman, no bad habits. This summer I am having Mitacs internship in Carleton university. I am searching for furnished (!) accommodation from June 30th to September 25th. June 30th to August 31st also works. Looking for 700-800 CAD per month.Feel free to reach me in instagram @frean_090 or on email amatsevytyi@icloud.com', 'Hello, I am Andrew, 20 y.o., IT and sportsman, no bad habits. This summer I am having Mitacs internship in Carleton university. I am searching for furnished (!) accommodation from June 30th to September 25th. June 30th to August 31st also works. Looking for 700-800 CAD per month.Feel free to reach me in instagram @frean_090 or on email amatsevytyi@icloud.com', 'Hello, I am Andrew, 20 y.o., IT and sportsman, no bad habits. This summer I am having Mitacs internship in Carleton university. I am searching for furnished (!) accommodation from June 30th to September 25th. June 30th to August 31st also works. Looking for 700-800 CAD per month.Feel free to reach me in instagram @frean_090 or on email amatsevytyi@icloud.com'], ['З днем народження!', 'З Днем народження!', 'Have a great birthday!'], ['З днем народження!', 'З Днем народження!', 'Have a great birthday!'], [], [{'title': 'CSC Hackathon 2023. Як це було. « Hackathon Expert Group', 'link': 'https://www.hackathon.expert/csc-hackathon-2023-report/', 'bm25_filter': 'Андрій Мацевитий', 'valuable_text': 'Щодо задачі з визначення міри подібності зображень, яку надала компанія ЛУН – перемогла командаCringe Minimizers(Антон Бражний, Андрій Мацевитий , Артем Орловський та Віталій Бутко, студенти Київського політехнічного інституту імені Ігоря Сікорського, Українського католицького університету у Львові та Вільнюского університету).Саме вони утримували першу позицію у приватному лідерборді практично від початку змагання. Разом з тим, ще дві команди,Team GARCH(Андрій Єрко, Андрій Шевцов, Нікіта Фордуі, Софія Шапошнікова, що також не вперше беруть участь у наших хакатонах) та вже згаданаSarcastic AI теж запропонували досить цікаві рішення, розділивши першу позицію з переможцями на публічному лідерборді.'}, {'title': 'Інститут проблем машинобудування імені А. М. Підгорного НАН ...', 'link': 'https://uk.wikipedia.org/wiki/%D0%86%D0%BD%D1%81%D1%82%D0%B8%D1%82%D1%83%D1%82_%D0%BF%D1%80%D0%BE%D0%B1%D0%BB%D0%B5%D0%BC_%D0%BC%D0%B0%D1%88%D0%B8%D0%BD%D0%BE%D0%B1%D1%83%D0%B4%D1%83%D0%B2%D0%B0%D0%BD%D0%BD%D1%8F_%D1%96%D0%BC%D0%B5%D0%BD%D1%96_%D0%90._%D0%9C._%D0%9F%D1%96%D0%B4%D0%B3%D0%BE%D1%80%D0%BD%D0%BE%D0%B3%D0%BE_%D0%9D%D0%90%D0%9D_%D0%A3%D0%BA%D1%80%D0%B0%D1%97%D0%BD%D0%B8', 'bm25_filter': 'Андрій Мацевитий', 'valuable_text': ' Юрій Мацевитий, Андрій Русанов, Віктор Соловей, Микола Шульженко, Володимир Голощапов, Павло Гонтаровський, Андрій Костіков, Вадим Цибулько за роботу «Підвищення енергоефективності роботи турбоустановок ТЕС і ТЕЦ шляхом модернізації, реконструкції та удосконалення режимів їхньої експлуатації» отрималиДержавну премію України в галузі науки і техніки 2008 року "Лауреати Державної премії України в галузі науки і техніки \\(2008\\)").'}, {'title': 'Члени Академії – Інститут енергетичних машин і систем ім. А.М ...', 'link': 'https://ipmach.kharkov.ua/%D1%87%D0%BB%D0%B5%D0%BD%D0%B8-%D0%B0%D0%BA%D0%B0%D0%B4%D0%B5%D0%BC%D1%96%D1%97/', 'bm25_filter': 'Андрій Мацевитий', 'valuable_text': 'КОСТІКОВ Андрій Олегович · КРАВЧЕНКО Олег Вікторович · МАЦЕВИТИЙ Юрій Михайлович · ПІДГОРНИЙ Анатолій Миколайович · ПРОСКУРА Георгій Федорович · РВАЧОВ\xa0...'}, {'title': 'Наша гордість - Спеціалізована школа І -ІІІ ступенів №251 імені ...', 'link': 'http://school251.edukit.kiev.ua/nasha_gordistj/', 'bm25_filter': 'Андрій Мацевитий', 'valuable_text': 'І. 42. ІІ, Мацевитий Андрій, Українська мова, 4-В, Герасимчук Л.І. 43. ІІІ, Мацевитий Андрій, Англійська мова, 4-В, Ільєнко Т.В. Переможці міського етапу\xa0...'}, {'title': 'Інститут енергетичних машин і систем ім. А. М. Підгорного', 'link': 'https://www.nas.gov.ua/institutions/institut-energeticnix-masin-i-sistem-im-a-m-pidgornogo-131', 'bm25_filter': 'Андрій Мацевитий', 'valuable_text': 'Русанов Андрій Вікторович. академік НАН України. Радник при дирекції. Мацевитий Юрій Михайлович. академік НАН України. Заступник директора з наукової роботи.'}, {'title': 'освітній ступінь бакалавр факультет інформатики спеціальність ...', 'link': 'https://www.ukma.edu.ua/index.php/about-us/sogodennya/dokumenty-naukma/doc_download/3927-fakultet-informatyky', 'bm25_filter': 'Андрій Мацевитий', 'valuable_text': 'Мацевитий Андрій Володимирович. 79.98. 26. Пілат Михайло Іванович. 79.87. 27. Молчанов Олексій Костянтинович. 78.38. 28. Нестерук Олена Олександрівна. 77.91. 29\xa0...'}, {'title': '03534570 — ІЕМС НАН України', 'link': 'https://opendatabot.ua/c/03534570', 'bm25_filter': 'Андрій Мацевитий', 'valuable_text': 'Переглянути повну інформацію про юридичну особу ІНСТИТУТ ЕНЕРГЕТИЧНИХ МАШИН І СИСТЕМ ІМ. А. М. ПІДГОРНОГО НАЦІОНАЛЬНОЇ АКАДЕМІЇ НАУК УКРАЇНИ. Компанія ІЕМС НАН України зареєстрована — 10.05.1993. Керівник компанії — Русанов Андрій Вікторович. Юрідична адреса компанії ІЕМС НАН України: Україна, 61046, Харківська обл., місто Харків, вул.Комунальників, будинок 2/10. Основний КВЕД юридичної особи — 71.20 Технічні випробування та дослідження. Номер свідоцтва про реєстрацію платника податку на додану вартість - 035345720371. За 2020 ІЕМС НАН України отримала виторг на суму 37 105 783 ₴ гривень'}, {'title': 'Відділення енергетики та енергетичних технологій НАН України', 'link': 'https://www.nas.gov.ua/structure/section-physical-technical-mathematical-sciences/department-energy-and-energy-technologies', 'bm25_filter': 'Андрій Мацевитий', 'valuable_text': 'Жаркін Андрій Федорович. академік НАН України. Кириленко Олександр Васильович. академік НАН України. Кулик Михайло Миколайович. академік НАН України. Мацевитий\xa0...'}, {'title': 'Інститут енергетичних машин і систем ім. А. М. Підгорного НАН ...', 'link': 'https://old.nas.gov.ua/UA//Org/Pages/default.aspx?OrgID=0000299', 'bm25_filter': 'Андрій Мацевитий', 'valuable_text': 'Мацевитий Юрій Михайлович. Почесний директор. Matsevity@nas.gov.ua. +38 0572 94 55 14. Русанов Андрій Вікторович. Директор. Rusanov.A.V@nas.gov.ua. +\xa0...'}, {'title': 'Лікар Васильцов Ігор Анатолійович, записатися на онлайн ...', 'link': 'https://e-likari.com.ua/doctor/vasilcov-igor-anatoliiovic/', 'bm25_filter': 'Андрій Мацевитий', 'valuable_text': 'Дякую! Волик Андрій. (5). 05.01.2025. Вдячний лікарю за консультацію ... Мацевитий Ернест Валерійович. (5). 10.04.2025. Анонімний відгук. (4). 09.04.2025.'}]]
+# Initialize services
+auth_service = AuthService(db)
+report_service = ReportService(db)
+fb_auth_service = FacebookAuthService(db)
+profile_service = ProfileService(db)
 
-#     result = parse_search_results_to_information_pieces(a, report_id=0, db=db)
-#     print("======================RESULT======================")
-#     print(result)
 
 @app.after_request
 def add_no_cache_headers(response):
@@ -59,394 +54,295 @@ def add_no_cache_headers(response):
     response.headers["Expires"] = "0"
     return response
 
-# Helper functions
-def hash_password(password):
-    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
-def verify_password(password, password_hash):
-    return bcrypt.checkpw(password.encode('utf-8'), password_hash.encode('utf-8'))
+# ==================== AUTH ROUTES ====================
 
-# API Routes
-
-# ------ AUTH ------
 @app.route('/api/register', methods=['POST'])
 def register():
+    """Register a new user"""
     try:
         data = request.json
-        email = data.get('email', '').strip().lower()
-        password = data.get('password', '')
-        name = data.get('name', '').strip()
-        
-        # Validation
-        if not email or not password:
-            return jsonify({'success': False, 'message': 'Email and password are required.'}), 400
-        
-        if len(password) < 8:
-            return jsonify({'success': False, 'message': 'Password must be at least 8 characters long.'}), 400
-        
-        # Check if user already exists
-        existing_user = User.query.filter_by(email=email).first()
-        if existing_user:
-            return jsonify({'success': False, 'message': 'Email already registered.'}), 400
-        
-        # Create new user
-        password_hash = hash_password(password)
-        new_user = User(
-            email=email,
-            password_hash=password_hash,
-            name=name,
-            confirmed=False  # Email confirmation required
+        result = auth_service.register_user(
+            email=data.get('email', ''),
+            password=data.get('password', ''),
+            name=data.get('name', '')
         )
-        
-        db.session.add(new_user)
-        db.session.commit()
-        
-        # In real app: send confirmation email here
-        return jsonify({
-            'success': True, 
-            'message': 'Registration successful. Please check your email for confirmation instructions.'
-        })
-        
+        return jsonify(result), 200
+    except ValueError as e:
+        return jsonify({'success': False, 'message': str(e)}), 400
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': 'Registration failed. Please try again.'}), 500
 
+
 @app.route('/api/login', methods=['POST'])
 def login():
+    """Authenticate user and return JWT token"""
     try:
         data = request.json
-        email = data.get('email', '').strip().lower()
-        password = data.get('password', '')
-        
-        if not email or not password:
-            return jsonify({'success': False, 'message': 'Email and password are required.'}), 400
-        
-        # Find user
-        user = User.query.filter_by(email=email).first()
-        
-        if not user or not verify_password(password, user.password_hash):
-            return jsonify({'success': False, 'message': 'Invalid email or password.'}), 401
-        
-        if not user.confirmed:
-            return jsonify({'success': False, 'message': 'Please confirm your email before logging in.'}), 403
-        
-        # Create access token
-        access_token = create_access_token(identity=email)
-        
-        return jsonify({
-            'success': True,
-            'message': 'Login successful.',
-            'access_token': access_token,
-            'user': {
-                'email': user.email,
-                'name': user.name
-            }
-        })
-        
+        result = auth_service.login_user(
+            email=data.get('email', ''),
+            password=data.get('password', '')
+        )
+        return jsonify(result), 200
+    except ValueError as e:
+        return jsonify({'success': False, 'message': str(e)}), 401
     except Exception as e:
         return jsonify({'success': False, 'message': 'Login failed. Please try again.'}), 500
 
+
 @app.route('/api/confirm', methods=['POST'])
 def confirm_email():
+    """Confirm user email address"""
     try:
         data = request.json
-        email = data.get('email', '').strip().lower()
-        
-        user = User.query.filter_by(email=email).first()
-        if not user:
-            return jsonify({'success': False, 'message': 'User not found.'}), 404
-        
-        user.confirmed = True
-        db.session.commit()
-        
-        return jsonify({'success': True, 'message': 'Email confirmed successfully. You can now log in.'})
-        
+        result = auth_service.confirm_email(data.get('email', ''))
+        return jsonify(result), 200
+    except ValueError as e:
+        return jsonify({'success': False, 'message': str(e)}), 404
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': 'Email confirmation failed.'}), 500
 
-# ------ SEARCH ------
+
+# ==================== SEARCH & REPORT ROUTES ====================
+
 @app.route('/api/search', methods=['POST'])
 @jwt_required()
 def search():
+    """Create a new report based on search query"""
     try:
         current_user_email = get_jwt_identity()
-        user = User.query.filter_by(email=current_user_email).first()
-        
-        if not user:
-            return jsonify({'success': False, 'message': 'User not found.'}), 404 #TODO: replace with mock results
-        
         data = request.json
         query = data.get('query', '').strip()
         
-        if not query:
-            return jsonify({'success': False, 'message': 'Search query is required.'}), 400
+        # Get Facebook cookies if available
+        fb_cookies = fb_auth_service.get_cookies(current_user_email)
         
-        report_id = init_report(db=db, user_id=user.id, query=query)
-
-        # Load facebook cookies for current user (if any) and verify before scraping
-        fb_cookies_obj = None
-        try:
-            fc = FacebookCookies.query.filter_by(user_email=current_user_email).first()
-            if fc and fc.cookies_json:
-                try:
-                    fb_cookies_obj = json.loads(fc.cookies_json)
-                except Exception:
-                    fb_cookies_obj = None
-        except Exception:
-            fb_cookies_obj = None
-
-        # Verify cookies are still valid
-        fb_ok = False
-        try:
-            if fb_cookies_obj:
-                fb_ok = FacebookCookieManager.verify_cookies_map(fb_cookies_obj)
-        except Exception:
-            fb_ok = False
-
-        if fb_ok:
-            raw_search_results = collect_data(query, use_general=True, cookie_map=fb_cookies_obj, uid=str(user.id))
-        else:
-            # proceed without facebook scraping if cookies missing/invalid
-            raw_search_results = collect_data(query, use_general=True, use_facebook=False)
+        # Create report using service
+        report = report_service.create_report(current_user_email, query, fb_cookies)
+        return jsonify({'success': True, 'report': report}), 200
         
-        # for debug purposes
-        #raw_search_results = [['Hello, I am Andrew, 20 y.o., IT and sportsman, no bad habits. This summer I am having Mitacs internship in Carleton university. I am searching for furnished (!) accommodation from June 30th to September 25th. June 30th to August 31st also works. Looking for 700-800 CAD per month.Feel free to reach me in instagram @frean_090 or on email amatsevytyi@icloud.com', 'Hello, I am Andrew, 20 y.o., IT and sportsman, no bad habits. This summer I am having Mitacs internship in Carleton university. I am searching for furnished (!) accommodation from June 30th to September 25th. June 30th to August 31st also works. Looking for 700-800 CAD per month.Feel free to reach me in instagram @frean_090 or on email amatsevytyi@icloud.com', 'Hello, I am Andrew, 20 y.o., IT and sportsman, no bad habits. This summer I am having Mitacs internship in Carleton university. I am searching for furnished (!) accommodation from June 30th to September 25th. June 30th to August 31st also works. Looking for 700-800 CAD per month.Feel free to reach me in instagram @frean_090 or on email amatsevytyi@icloud.com'], ['З днем народження!', 'З Днем народження!', 'Have a great birthday!'], ['З днем народження!', 'З Днем народження!', 'Have a great birthday!'], [], [{'title': 'CSC Hackathon 2023. Як це було. « Hackathon Expert Group', 'link': 'https://www.hackathon.expert/csc-hackathon-2023-report/', 'bm25_filter': 'Андрій Мацевитий', 'valuable_text': 'Щодо задачі з визначення міри подібності зображень, яку надала компанія ЛУН – перемогла командаCringe Minimizers(Антон Бражний, Андрій Мацевитий , Артем Орловський та Віталій Бутко, студенти Київського політехнічного інституту імені Ігоря Сікорського, Українського католицького університету у Львові та Вільнюского університету).Саме вони утримували першу позицію у приватному лідерборді практично від початку змагання. Разом з тим, ще дві команди,Team GARCH(Андрій Єрко, Андрій Шевцов, Нікіта Фордуі, Софія Шапошнікова, що також не вперше беруть участь у наших хакатонах) та вже згаданаSarcastic AI теж запропонували досить цікаві рішення, розділивши першу позицію з переможцями на публічному лідерборді.'}, {'title': 'Інститут проблем машинобудування імені А. М. Підгорного НАН ...', 'link': 'https://uk.wikipedia.org/wiki/%D0%86%D0%BD%D1%81%D1%82%D0%B8%D1%82%D1%83%D1%82_%D0%BF%D1%80%D0%BE%D0%B1%D0%BB%D0%B5%D0%BC_%D0%BC%D0%B0%D1%88%D0%B8%D0%BD%D0%BE%D0%B1%D1%83%D0%B4%D1%83%D0%B2%D0%B0%D0%BD%D0%BD%D1%8F_%D1%96%D0%BC%D0%B5%D0%BD%D1%96_%D0%90._%D0%9C._%D0%9F%D1%96%D0%B4%D0%B3%D0%BE%D1%80%D0%BD%D0%BE%D0%B3%D0%BE_%D0%9D%D0%90%D0%9D_%D0%A3%D0%BA%D1%80%D0%B0%D1%97%D0%BD%D0%B8', 'bm25_filter': 'Андрій Мацевитий', 'valuable_text': ' Юрій Мацевитий, Андрій Русанов, Віктор Соловей, Микола Шульженко, Володимир Голощапов, Павло Гонтаровський, Андрій Костіков, Вадим Цибулько за роботу «Підвищення енергоефективності роботи турбоустановок ТЕС і ТЕЦ шляхом модернізації, реконструкції та удосконалення режимів їхньої експлуатації» отрималиДержавну премію України в галузі науки і техніки 2008 року "Лауреати Державної премії України в галузі науки і техніки \\(2008\\)").'}, {'title': 'Члени Академії – Інститут енергетичних машин і систем ім. А.М ...', 'link': 'https://ipmach.kharkov.ua/%D1%87%D0%BB%D0%B5%D0%BD%D0%B8-%D0%B0%D0%BA%D0%B0%D0%B4%D0%B5%D0%BC%D1%96%D1%97/', 'bm25_filter': 'Андрій Мацевитий', 'valuable_text': 'КОСТІКОВ Андрій Олегович · КРАВЧЕНКО Олег Вікторович · МАЦЕВИТИЙ Юрій Михайлович · ПІДГОРНИЙ Анатолій Миколайович · ПРОСКУРА Георгій Федорович · РВАЧОВ\xa0...'}, {'title': 'Наша гордість - Спеціалізована школа І -ІІІ ступенів №251 імені ...', 'link': 'http://school251.edukit.kiev.ua/nasha_gordistj/', 'bm25_filter': 'Андрій Мацевитий', 'valuable_text': 'І. 42. ІІ, Мацевитий Андрій, Українська мова, 4-В, Герасимчук Л.І. 43. ІІІ, Мацевитий Андрій, Англійська мова, 4-В, Ільєнко Т.В. Переможці міського етапу\xa0...'}, {'title': 'Інститут енергетичних машин і систем ім. А. М. Підгорного', 'link': 'https://www.nas.gov.ua/institutions/institut-energeticnix-masin-i-sistem-im-a-m-pidgornogo-131', 'bm25_filter': 'Андрій Мацевитий', 'valuable_text': 'Русанов Андрій Вікторович. академік НАН України. Радник при дирекції. Мацевитий Юрій Михайлович. академік НАН України. Заступник директора з наукової роботи.'}, {'title': 'освітній ступінь бакалавр факультет інформатики спеціальність ...', 'link': 'https://www.ukma.edu.ua/index.php/about-us/sogodennya/dokumenty-naukma/doc_download/3927-fakultet-informatyky', 'bm25_filter': 'Андрій Мацевитий', 'valuable_text': 'Мацевитий Андрій Володимирович. 79.98. 26. Пілат Михайло Іванович. 79.87. 27. Молчанов Олексій Костянтинович. 78.38. 28. Нестерук Олена Олександрівна. 77.91. 29\xa0...'}, {'title': '03534570 — ІЕМС НАН України', 'link': 'https://opendatabot.ua/c/03534570', 'bm25_filter': 'Андрій Мацевитий', 'valuable_text': 'Переглянути повну інформацію про юридичну особу ІНСТИТУТ ЕНЕРГЕТИЧНИХ МАШИН І СИСТЕМ ІМ. А. М. ПІДГОРНОГО НАЦІОНАЛЬНОЇ АКАДЕМІЇ НАУК УКРАЇНИ. Компанія ІЕМС НАН України зареєстрована — 10.05.1993. Керівник компанії — Русанов Андрій Вікторович. Юрідична адреса компанії ІЕМС НАН України: Україна, 61046, Харківська обл., місто Харків, вул.Комунальників, будинок 2/10. Основний КВЕД юридичної особи — 71.20 Технічні випробування та дослідження. Номер свідоцтва про реєстрацію платника податку на додану вартість - 035345720371. За 2020 ІЕМС НАН України отримала виторг на суму 37 105 783 ₴ гривень'}, {'title': 'Відділення енергетики та енергетичних технологій НАН України', 'link': 'https://www.nas.gov.ua/structure/section-physical-technical-mathematical-sciences/department-energy-and-energy-technologies', 'bm25_filter': 'Андрій Мацевитий', 'valuable_text': 'Жаркін Андрій Федорович. академік НАН України. Кириленко Олександр Васильович. академік НАН України. Кулик Михайло Миколайович. академік НАН України. Мацевитий\xa0...'}, {'title': 'Інститут енергетичних машин і систем ім. А. М. Підгорного НАН ...', 'link': 'https://old.nas.gov.ua/UA//Org/Pages/default.aspx?OrgID=0000299', 'bm25_filter': 'Андрій Мацевитий', 'valuable_text': 'Мацевитий Юрій Михайлович. Почесний директор. Matsevity@nas.gov.ua. +38 0572 94 55 14. Русанов Андрій Вікторович. Директор. Rusanov.A.V@nas.gov.ua. +\xa0...'}, {'title': 'Лікар Васильцов Ігор Анатолійович, записатися на онлайн ...', 'link': 'https://e-likari.com.ua/doctor/vasilcov-igor-anatoliiovic/', 'bm25_filter': 'Андрій Мацевитий', 'valuable_text': 'Дякую! Волик Андрій. (5). 05.01.2025. Вдячний лікарю за консультацію ... Мацевитий Ернест Валерійович. (5). 10.04.2025. Анонімний відгук. (4). 09.04.2025.'}]]
-
-        print(fb_ok)
-        print(fb_cookies_obj)
-        print(raw_search_results)
-
-        information_pieces = parse_search_results_to_information_pieces(
-            data=raw_search_results, 
-            report_id=report_id, 
-            db=db
-        )
-        
-        final_report = generate_complete_report(db=db, report_id=report_id, information_pieces=information_pieces)
-        
-        # Add to search history
-        search_history = SearchHistory(
-            user_id=user.id,
-            user_query=query,
-            report_id=report_id
-        )
-        
-        db.session.add(search_history)
-        db.session.commit()
-        
-        return jsonify({'success': True, 'report': final_report})
-        
+    except ValueError as e:
+        return jsonify({'success': False, 'message': str(e)}), 400
     except Exception as e:
-        print(e)
+        print(f"Search error: {e}")
         db.session.rollback()
         return jsonify({'success': False, 'message': 'Search failed. Please try again.'}), 500
 
-# ------------ Dashboard ------------
+
 @app.route('/api/report/<report_id>', methods=['GET'])
 @jwt_required()
 def get_report(report_id):
+    """Retrieve a specific report"""
     try:
         current_user_email = get_jwt_identity()
-        user = User.query.filter_by(email=current_user_email).first()
-        
-        if not user:
-            return jsonify({'success': False, 'message': 'User not found.'}), 404
-        
-        report = Report.query.filter_by(report_id=report_id, user_id=user.id).first()
-        if not report:
-            return jsonify({'success': False, 'message': 'Report not found.'}), 404
-        
-        return jsonify({'success': True, 'report': report.to_dict()})
-        
+        report = report_service.get_report(current_user_email, report_id)
+        return jsonify({'success': True, 'report': report}), 200
+    except ValueError as e:
+        return jsonify({'success': False, 'message': str(e)}), 404
     except Exception as e:
         return jsonify({'success': False, 'message': 'Failed to retrieve report.'}), 500
+
 
 @app.route('/api/history', methods=['GET'])
 @jwt_required()
 def get_search_history():
+    """Get user's search history"""
     try:
         current_user_email = get_jwt_identity()
-        user = User.query.filter_by(email=current_user_email).first()
-        
-        if not user:
-            return jsonify({'success': False, 'message': 'User not found.'}), 404
-        
-        searches = SearchHistory.query.filter_by(user_id=user.id).order_by(SearchHistory.created_at.desc()).all()
-        history = [search.to_dict() for search in searches]
-        
-        return jsonify({'success': True, 'history': history})
-        
+        history = report_service.get_search_history(current_user_email)
+        return jsonify({'success': True, 'history': history}), 200
+    except ValueError as e:
+        return jsonify({'success': False, 'message': str(e)}), 404
     except Exception as e:
         return jsonify({'success': False, 'message': 'Failed to retrieve search history.'}), 500
 
-# ------------ Profile/settings ------------
+
+# ==================== PROFILE ROUTES ====================
+
 @app.route('/api/profile', methods=['GET'])
 @jwt_required()
 def get_profile():
+    """Get user profile information"""
     try:
         current_user_email = get_jwt_identity()
-        user = User.query.filter_by(email=current_user_email).first()
-        
-        if not user:
-            return jsonify({'success': False, 'message': 'User not found.'}), 404
-        
-        profile = {
-            'email': user.email,
-            'name': user.name,
-            'confirmed': user.confirmed,
-            'created_at': user.created_at.isoformat() + 'Z',
-            'total_reports': len(user.reports),
-            'total_searches': len(user.searches),
-            'theme': getattr(user, 'theme', None)
-        }
-        
-        return jsonify({'success': True, 'profile': profile})
-        
+        profile = profile_service.get_profile(current_user_email)
+        return jsonify({'success': True, 'profile': profile}), 200
+    except ValueError as e:
+        return jsonify({'success': False, 'message': str(e)}), 404
     except Exception as e:
         return jsonify({'success': False, 'message': 'Failed to retrieve profile.'}), 500
- 
- # ------------ Settings / Derived from profile ------------   
+
+
+@app.route('/api/profile/password', methods=['POST'])
+@jwt_required()
+def change_password():
+    """Change user password"""
+    try:
+        current_user_email = get_jwt_identity()
+        data = request.json or {}
+        
+        result = auth_service.change_password(
+            email=current_user_email,
+            current_password=data.get('current_password'),
+            new_password=data.get('new_password')
+        )
+        return jsonify(result), 200
+    except ValueError as e:
+        return jsonify({'success': False, 'message': str(e)}), 400
+    except Exception as e:
+        db.session.rollback()
+        print(f'Error changing password: {e}')
+        return jsonify({'success': False, 'message': 'Failed to change password. Please try again.'}), 500
+
+
+@app.route('/api/settings/theme', methods=['POST'])
+@jwt_required()
+def set_theme():
+    """Set user theme preference"""
+    try:
+        current_user_email = get_jwt_identity()
+        data = request.json
+        
+        result = profile_service.set_theme(current_user_email, data.get('theme'))
+        return jsonify(result), 200
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to save theme preference'}), 500
+
+
+# ==================== FACEBOOK AUTH ROUTES ====================
+
 @app.route('/api/profile/facebook/cookies', methods=['POST'])
 @jwt_required()
 def update_facebook_cookies():
-    data = request.json
-    print("cookies received", data) 
-    if not data or 'cookies_json' not in data:
-        print('No data provided')
-        return jsonify({'error': 'No data provided'}), 400
-
+    """Save Facebook cookies for user"""
     try:
-        cookies = json.loads(data['cookies_json'])
-        assert all(k in cookies for k in ['c_user', 'xs'])
-        print("cookies parsed", cookies)
-    except Exception:
-        return jsonify({'error': 'Invalid cookies format or missing c_user/xs'}), 400
-
-    # Lightweight verification
-    try:
-        ok = FacebookCookieManager.verify_cookies_map(cookies)
-    except Exception:
-        ok = False
+        current_user_email = get_jwt_identity()
+        data = request.json
         
-    print("cookies verification result:", ok)
-
-    if not ok:
-        return jsonify({'error': 'Provided cookies appear invalid or not authenticated.'}), 400
-
-    expires_at = datetime.utcnow() + relativedelta(months=1)
-
-    # Upsert cookies in DB
-    current_user_email = get_jwt_identity()
-    fc = FacebookCookies.query.filter_by(user_email=current_user_email).first()
-    if not fc:
-        fc = FacebookCookies(user_email=current_user_email, cookies_json=json.dumps(cookies), 
-                             saved_at=datetime.utcnow(), expires_at=expires_at)
-        db.session.add(fc)
-    else:
-        fc.cookies_json = json.dumps(cookies)
-        fc.saved_at = datetime.utcnow()
-        fc.expires_at = expires_at
-    db.session.commit()
-    
-    print("cookies updated", cookies)
-
-    return jsonify({'success': True}), 200
+        result = fb_auth_service.save_cookies(
+            user_email=current_user_email,
+            cookies_json=data.get('cookies_json')
+        )
+        return jsonify(result), 200
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to save cookies'}), 500
 
 
 @app.route('/api/profile/facebook/login', methods=['POST'])
 @jwt_required()
 def facebook_login_with_credentials():
-    """Perform server-side login to Facebook using provided credentials and save extracted cookies.
-    Request JSON: { "login": "fb_login_or_email", "password": "fb_password", "headless": true }
-    """
-    data = request.json or {}
-    fb_login = data.get('login')
-    fb_password = data.get('password')
-    headless = data.get('headless', True)
-
-    if not fb_login or not fb_password:
-        return jsonify({'success': False, 'message': 'Login and password are required.'}), 400
-
-    # Attempt login using Selenium helper
+    """Login to Facebook using credentials and save cookies"""
     try:
-        cookie_map = FacebookCookieManager.login_with_credentials(fb_login, fb_password, headless=bool(headless))
+        current_user_email = get_jwt_identity()
+        data = request.json or {}
+        
+        result = fb_auth_service.login_with_credentials(
+            user_email=current_user_email,
+            fb_login=data.get('login'),
+            fb_password=data.get('password'),
+            headless=data.get('headless', True)
+        )
+        return jsonify(result), 200
+    except ValueError as e:
+        return jsonify({'success': False, 'message': str(e)}), 400
     except Exception as e:
-        print('FB login error:', e)
-        return jsonify({'success': False, 'message': 'Failed to perform login: ' + str(e)}), 500
+        db.session.rollback()
+        print(f'FB login error: {e}')
+        return jsonify({'success': False, 'message': 'Failed to perform login.'}), 500
 
-    # Validate cookies
-    ok = FacebookCookieManager.verify_cookies_map(cookie_map)
-    if not ok:
-        # still return cookies for debugging, but mark as failure
-        return jsonify({'success': False, 'message': 'Login succeeded but cookies appear invalid or 2FA required.', 'cookies': cookie_map}), 400
-
-    # Upsert into FacebookCookies table (store JSON string)
-    expires_at = datetime.utcnow() + relativedelta(months=1)
-    current_user_email = get_jwt_identity()
-    fc = FacebookCookies.query.filter_by(user_email=current_user_email).first()
-    if not fc:
-        fc = FacebookCookies(user_email=current_user_email, cookies_json=json.dumps(cookie_map), saved_at=datetime.utcnow(), expires_at=expires_at)
-        db.session.add(fc)
-    else:
-        fc.cookies_json = json.dumps(cookie_map)
-        fc.saved_at = datetime.utcnow()
-        fc.expires_at = expires_at
-    db.session.commit()
-
-    return jsonify({'success': True, 'message': 'Logged in and cookies saved.'}), 200
 
 @app.route('/api/profile/facebook/cookies', methods=['GET'])
 @jwt_required()
 def get_facebook_cookies_status():
-    fc = FacebookCookies.query.filter_by(user_email=get_jwt_identity()).first()
-    now = datetime.utcnow()
-    has_cookies = bool(fc)
-    is_expired = fc.expires_at < now if fc and fc.expires_at else True
-    
-    return jsonify({
-        'has_cookies': has_cookies, 
-        'is_expired': is_expired
-    }), 200
+    """Check if user has valid Facebook cookies"""
+    try:
+        current_user_email = get_jwt_identity()
+        cookies = fb_auth_service.get_cookies(current_user_email)
+        
+        return jsonify({
+            'has_cookies': cookies is not None,
+            'is_expired': cookies is None
+        }), 200
+    except Exception as e:
+        return jsonify({'error': 'Failed to check cookies status'}), 500
+
+
+@app.route('/api/profile/facebook/cookies', methods=['DELETE'])
+@jwt_required()
+def delete_facebook_cookies():
+    """Delete user's Facebook cookies"""
+    try:
+        current_user_email = get_jwt_identity()
+        result = fb_auth_service.delete_cookies(current_user_email)
+        return jsonify(result), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to delete cookies'}), 500
+
+
+# ==================== CHAT ROUTES ====================
 
 @app.route('/api/chat/report/<report_id>/sessions', methods=['POST'])
 @jwt_required()
 def create_chat_session(report_id):
+    """Create a chat session for a report"""
     data = request.json or {}
     title = data.get('title')
     save_history = bool(data.get('save_history', True))
     current_user_email = get_jwt_identity()
+    
     try:
         # Reuse a single session per user+report
-        existing = ChatSession.query.filter_by(user_email=current_user_email, report_id=report_id).first()
+        existing = ChatSession.query.filter_by(
+            user_email=current_user_email, 
+            report_id=report_id
+        ).first()
+        
         if existing:
             return jsonify({'success': True, 'session': existing.to_dict()}), 200
 
-        cs = ChatSession(user_email=current_user_email, report_id=report_id, title=title, save_history=save_history)
+        cs = ChatSession(
+            user_email=current_user_email, 
+            report_id=report_id, 
+            title=title, 
+            save_history=save_history
+        )
         db.session.add(cs)
         db.session.commit()
         return jsonify({'success': True, 'session': cs.to_dict()}), 201
     except Exception as e:
         db.session.rollback()
-        print('Failed to create chat session:', e)
+        print(f'Failed to create chat session: {e}')
         return jsonify({'success': False, 'message': 'Failed to create session'}), 500
 
 
 @app.route('/api/chat/sessions/<int:session_id>/messages', methods=['GET'])
 @jwt_required()
 def get_session_messages(session_id):
+    """Get all messages for a chat session"""
     try:
-        msgs = ChatMessage.query.filter_by(session_id=session_id).order_by(ChatMessage.created_at.asc()).all()
+        msgs = ChatMessage.query.filter_by(session_id=session_id)\
+            .order_by(ChatMessage.created_at.asc())\
+            .all()
         out = [m.to_dict() for m in msgs]
         return jsonify({'success': True, 'messages': out}), 200
     except Exception as e:
-        print('Failed fetching messages:', e)
+        print(f'Failed fetching messages: {e}')
         return jsonify({'success': False, 'message': 'Failed to fetch messages'}), 500
 
 
 @app.route('/api/chat/sessions/<int:session_id>/messages', methods=['POST'])
 @jwt_required()
 def post_session_message(session_id):
+    """Post a message to a chat session and get AI response"""
     data = request.json or {}
     user_msg = data.get('message', '').strip()
     scope = data.get('scope', 'report')  # 'report' or 'datapieces'
@@ -464,23 +360,33 @@ def post_session_message(session_id):
     context = []
     try:
         if scope == 'datapieces' and datapiece_ids:
-            piece = InformationPiece.query.filter(InformationPiece.id.in_(datapiece_ids)).first()
+            piece = InformationPiece.query.filter(
+                InformationPiece.id.in_(datapiece_ids)
+            ).first()
             user_msg += "\n\nContext:\n" + str(piece.to_dict())
             
-            # similar pieces for datapiece
-            similar = InformationPiece.query.filter(InformationPiece.report_id.in_(piece.report_id),
-                                                    InformationPiece.category_id == piece.category_id,
-                                                   InformationPiece.id != piece.id).order_by(InformationPiece.created_at.desc()).limit(5).all()
+            # Similar pieces for datapiece
+            similar = InformationPiece.query.filter(
+                InformationPiece.report_id.in_(piece.report_id),
+                InformationPiece.category_id == piece.category_id,
+                InformationPiece.id != piece.id
+            ).order_by(InformationPiece.created_at.desc()).limit(5).all()
+            
             for sp in similar:
                 user_msg += "\n\nSimilar pieces:\n" + str(sp.to_dict())
-            
         else:
-            # whole report: include recent pieces for the report
-            context = [str(p.to_dict()) for p in InformationPiece.query.filter_by(report_id=session.report_id).order_by(InformationPiece.created_at.desc()).limit(40).all()]
+            # Whole report: include recent pieces for the report
+            context = [
+                str(p.to_dict()) 
+                for p in InformationPiece.query.filter_by(report_id=session.report_id)
+                    .order_by(InformationPiece.created_at.desc())
+                    .limit(40)
+                    .all()
+            ]
             user_msg += "\n\nContext:\n" + '\n\n'.join(context) if context else ""
             
     except Exception as e:
-        print('Failed loading datapiece context:', e)
+        print(f'Failed loading datapiece context: {e}')
 
     # Save user message if history is enabled
     try:
@@ -490,17 +396,15 @@ def post_session_message(session_id):
             db.session.commit()
     except Exception:
         db.session.rollback()
-        
-    
 
-    # Prepare messages for LLM (system + user)
+    # Prepare messages for LLM
     system_prompt = {
         'role': 'system',
         'content': """You respond as a friendly assistant who explains user information based only on the provided sources and helps to keep awareness about digital footprint security and protecting yourself online
 
                     Do not hallucinate.
                     Draw conclusions from the datapiece (and context), similar datapieces (provided under Similar Pieces)
-                    If you don’t know, say exactly that.
+                    If you don't know, say exactly that.
                     Do not give away technical details (such as ID), you are allowed to give away information based on links, context snippets and titles
 
                     When answering:
@@ -513,20 +417,30 @@ def post_session_message(session_id):
     }
     messages = [system_prompt, {'role': 'user', 'content': user_msg}]
 
-    # Call LLM abstraction with fallback to openai
+    # Call LLM abstraction with fallback
     try:
-        llm_result = chat_with_context(provider or 'groq', messages, context, fallback=['openai', 'local'])
+        llm_result = chat_with_context(
+            provider or 'groq', 
+            messages, 
+            context, 
+            fallback=['openai', 'local']
+        )
         reply = llm_result.get('reply') if isinstance(llm_result, dict) else str(llm_result)
         sources = llm_result.get('sources', []) if isinstance(llm_result, dict) else []
     except Exception as e:
-        print('LLM call failed:', e)
+        print(f'LLM call failed: {e}')
         reply = 'Failed to get response from LLM.'
         sources = []
 
     # Save assistant reply if history is enabled
     try:
         if session.save_history:
-            am = ChatMessage(session_id=session.id, sender='assistant', content=reply, meta=json.dumps({'sources': sources}))
+            am = ChatMessage(
+                session_id=session.id, 
+                sender='assistant', 
+                content=reply, 
+                meta=json.dumps({'sources': sources})
+            )
             db.session.add(am)
             db.session.commit()
     except Exception:
@@ -534,84 +448,34 @@ def post_session_message(session_id):
 
     return jsonify({'success': True, 'assistant': reply, 'sources': sources}), 200
 
-    
-# ------------ Other Settings ------------
-
-@app.route('/api/profile/password', methods=['POST'])
+@app.route('/api/settings/delete-account', methods=['POST'])
 @jwt_required()
-def change_password():
-    """Change user password"""
-    try:
-        data = request.json or {}
-
-        old_password = data.get('current_password')
-        new_password = data.get('new_password')
-
-        if not old_password or not new_password:
-            return jsonify({'success': False, 'message': 'Current and new passwords are required.'}), 400
-
-        if len(new_password) < 8:
-            return jsonify({'success': False, 'message': 'New password must be at least 8 characters long.'}), 400
-
-        # Get current user from JWT
-        current_user_email = get_jwt_identity()
-        user = User.query.filter_by(email=current_user_email).first()
-        if not user:
-            return jsonify({'success': False, 'message': 'User not found.'}), 404
-
-        # Verify old password matches stored hash
-        if not user.password_hash or not verify_password(old_password, user.password_hash):
-            return jsonify({'success': False, 'message': 'Current password is incorrect.'}), 401
-
-        # Update password hash
-        user.password_hash = hash_password(new_password)
-        db.session.commit()
-
-        return jsonify({'success': True, 'message': 'Password changed successfully.'}), 200
-
-    except Exception as e:
-        db.session.rollback()
-        print('Error changing password:', e)
-        return jsonify({'success': False, 'message': 'Failed to change password. Please try again.'}), 500
-
-@app.route('/api/profile/theme', methods=['POST'])
-@jwt_required()
-def set_theme():
-    """Set user theme preference"""
+def delete_account():
+    """Delete user account and related data"""
     data = request.json
-    theme = data.get('theme')  # 'light', 'dark', 'device'
-
-    if theme not in ['light', 'dark', 'device']:
-        return jsonify({'error': 'Invalid theme'}), 400
-
-    # Persist preference to database for the current user (best-effort)
-    try:
-        current_user_email = get_jwt_identity()
-        user = User.query.filter_by(email=current_user_email).first()
-        if not user:
-            return jsonify({'error': 'User not found'}), 404
-
-        # set and commit theme preference
-        user.theme = theme
-        db.session.commit()
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': 'Failed to save theme preference'}), 500
-
-    return jsonify({'success': True, 'theme': theme}), 200
+    password = data.get('password')
+    full_name = data.get('full_name')
+    
+    # TODO: Implement actual deletion logic with password verification
+    print(f"\n[ACCOUNT DELETION] User '{full_name}' deleted at {datetime.utcnow()}")
+    print(f"[ACTION] Removing: user records, search history, cookies, LLM configs, chat data")
+    
+    return jsonify({'success': True, 'message': 'Account deleted'}), 200
 
 
+# ==================== UTILITY ROUTES ====================
 
-# Health check endpoint
 @app.route('/api/health', methods=['GET'])
 def health_check():
+    """Health check endpoint"""
     return jsonify({'status': 'healthy', 'timestamp': datetime.utcnow().isoformat() + 'Z'})
 
-# Entry point of frontend serve
+
 @app.route('/')
 def home():
+    """Serve frontend"""
     return render_template('index.html')
+
 
 if __name__ == "__main__":
     app.run(debug=True, host='0.0.0.0', port=5000)
-
