@@ -37,6 +37,12 @@ def init_report(db, user_id: str, query: str) -> str:
 def generate_complete_report(db, report_id: str, information_pieces: List[InformationPiece]) -> dict:
     """Generate complete report from InformationPiece objects"""
     
+    if not information_pieces or not information_pieces[0]:
+        print("No information pieces found for report", report_id)
+        information_pieces = db.session.query(InformationPiece).filter_by(report_id=report_id).all()
+        
+    print(f"Generating report for {len(information_pieces)} information pieces")
+    
     # Get the report from database
     print("querying report with id", report_id)
     report = get_report(db=db, report_id=report_id)
@@ -75,13 +81,14 @@ def generate_complete_report(db, report_id: str, information_pieces: List[Inform
         
         validation_score = calculate_validation_score(piece.repetition_count, contradicting_count)
         
-        word_based_risk_score = word_based_risk_score + validation_score
-        relevance_score = piece.relevance_score or 0.5
+        word_based_risk_score = min(word_based_risk_score + validation_score, 7)
+        relevance_score = piece.relevance_score or 0.1
+        #relevance_score = 1 - (abs(relevance_score - 1) / 4)
         relevance_score = relevance_score * word_based_risk_score
         
         final_relevance_score = adjusted_risk_score(relevance_score, earlier_infopiece_date)
         
-        risk_level = "low" if final_relevance_score < 1.7 else "medium" if final_relevance_score < 4 else "high"
+        risk_level = "low" if final_relevance_score < 4 else "medium" if final_relevance_score < 7 else "high"
         
         print(f"InfoPiece ID {piece.content} - Word Risk: {word_based_risk_score:.2f}, Validation Score: {validation_score:.2f}, Relevance Score: {relevance_score:.2f}, Final Risk Score: {final_relevance_score:.2f}, Risk Level: {risk_level}")
         

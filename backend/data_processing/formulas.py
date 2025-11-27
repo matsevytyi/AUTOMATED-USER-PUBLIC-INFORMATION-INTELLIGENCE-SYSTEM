@@ -123,7 +123,7 @@ def recency_factor(published_at: Optional[datetime], now: Optional[datetime] = N
 def adjusted_risk_score(base_risk_score: float, published_at: Optional[datetime]) -> float:
     """
     Adjusted Risk Score = base_risk_score * (1 + RecencyFactor)
-    base_risk_score expected in [0..10] range (your r_i scale)
+    base_risk_score expected in [0..10] range 
     """
     rf = recency_factor(published_at)
     return base_risk_score * (1.0 + rf)
@@ -150,8 +150,7 @@ def calculate_validation_score(corroborating_count, contradictory_count) -> floa
     Calculate validation score for an InformationPiece .
     """
     
-    total_count = (corroborating_count - contradictory_count) / ( corroborating_count + contradictory_count)
-    total_count += 1
+    total_count = (corroborating_count - contradictory_count + 1) / ( corroborating_count + contradictory_count + 2)
     if total_count < 1:
         return 1.0
     

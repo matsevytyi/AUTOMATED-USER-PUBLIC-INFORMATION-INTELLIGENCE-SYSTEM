@@ -32,8 +32,6 @@ def chat_with_context(provider: str, messages: List[Dict[str, Any]], context: Li
 	- fallback: list of provider ids to try if primary fails
 	"""
 	providers = [provider] + (fallback or [])
-	# For now, try providers but only stub is implemented. If OPENAI key present and provider==openai,
-	# an actual OpenAI call could be attempted. We intentionally keep this modular.
 
 	# Attempt each provider (stubbed)
 	for p in providers:
