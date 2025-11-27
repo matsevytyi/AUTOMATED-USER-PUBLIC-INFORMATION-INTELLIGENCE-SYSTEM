@@ -145,6 +145,18 @@ def overall_risk_score(r_scores: List[float], weights: List[float]) -> float:
     den = sum(weights) or 1.0
     return num / den
 
+def calculate_validation_score(corroborating_count, contradictory_count) -> float:
+    """
+    Calculate validation score for an InformationPiece .
+    """
+    
+    total_count = (corroborating_count - contradictory_count) / ( corroborating_count + contradictory_count)
+    total_count += 1
+    if total_count < 1:
+        return 1.0
+    
+    return total_count
+
 
 # -------------------------
 # Information Change Calculation (4.5.3.5)

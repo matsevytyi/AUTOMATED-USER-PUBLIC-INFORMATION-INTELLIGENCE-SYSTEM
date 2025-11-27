@@ -67,7 +67,7 @@ def multiple_create_string_information_piece(db, content, source_id, report_id, 
     for item in extracted_content:
         if len(item[0]) > 0:
             
-            info_piece = create_string_information_piece(db, item[0], source_id, report_id, category_name = item[1], source=link, snippet=valuable_text, report_query=report_query)
+            info_piece = create_string_information_piece(db, item[0], source_id, report_id, category_name = item[1], source="facebook.com", snippet=item[0], report_query=report_query)
             
             if info_piece:
                 processed_item = item[0].lower().strip()

@@ -11,6 +11,8 @@ models_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../'))
 sys.path.append(models_path)
 from backend.models import User, Report, DiscoverSource, InformationCategory, InformationPiece
 
+from backend.data_processing.formulas import calculate_validation_score, adjusted_risk_score
+
 def init_report(db, user_id: str, query: str) -> str:
     """Initialize a new report and save it to database"""
     report_id = f"RPT-{datetime.now().strftime('%Y%m%d')}-{random.randint(1000, 9999)}"
@@ -42,21 +44,49 @@ def generate_complete_report(db, report_id: str, information_pieces: List[Inform
     if not report:
         raise ValueError(f"Report {report_id} not found")
     
-    print("gpt report", report.to_dict())
-    
     # Process information pieces into report format
     detailed_findings = []
     risk_counts = {"high": 0, "medium": 0, "low": 0}
     source_counts = {}
     
+    risk_vals = []
+    
     for piece in information_pieces:
         # Get category and source names
         category_name = get_category_name(db, piece.category_id)
         source_name = get_source_name(db, piece.source_id)
-        
+
         # Determine risk level based on category and content
-        risk_level = determine_risk_level(piece, category_name)
+        word_based_risk_score = determine_risk_level(piece)
+
+        contradicting_count = db.session.query(InformationPiece).filter(
+                InformationPiece.content == piece.content,
+                InformationPiece.report_id != piece.report_id
+            ).count()
+        
+        earlier_infopiece = db.session.query(InformationPiece).filter(
+                                        InformationPiece.content == piece.content
+                                        ).order_by(InformationPiece.created_at.asc()).first()
+        
+        if earlier_infopiece:
+            earlier_infopiece_date = earlier_infopiece.created_at
+        else:
+            earlier_infopiece_date = piece.created_at
+        
+        validation_score = calculate_validation_score(piece.repetition_count, contradicting_count)
+        
+        word_based_risk_score = word_based_risk_score + validation_score
+        relevance_score = piece.relevance_score or 0.5
+        relevance_score = relevance_score * word_based_risk_score
+        
+        final_relevance_score = adjusted_risk_score(relevance_score, earlier_infopiece_date)
+        
+        risk_level = "low" if final_relevance_score < 1.7 else "medium" if final_relevance_score < 4 else "high"
+        
+        print(f"InfoPiece ID {piece.content} - Word Risk: {word_based_risk_score:.2f}, Validation Score: {validation_score:.2f}, Relevance Score: {relevance_score:.2f}, Final Risk Score: {final_relevance_score:.2f}, Risk Level: {risk_level}")
+        
         risk_counts[risk_level] += 1
+        risk_vals.append(final_relevance_score)
         
         # Count sources
         source_counts[source_name] = source_counts.get(source_name, 0) + 1
@@ -88,7 +118,7 @@ def generate_complete_report(db, report_id: str, information_pieces: List[Inform
             pass
     
     # Calculate overall risk score
-    overall_risk_score = calculate_overall_risk_score(risk_counts, len(information_pieces))
+    overall_risk_score = sum(risk_vals) / len(risk_vals) if risk_vals else 0.0
     
     print("overall risk score", overall_risk_score)
     
@@ -160,9 +190,11 @@ def get_source_name(db, source_id: int) -> str:
     source = db.session.query(DiscoverSource).filter_by(id=source_id).first()
     return source.name if source else "Unknown Source"
 
-def determine_risk_level(piece: InformationPiece, category_name: str) -> str:
+def determine_risk_level(piece: InformationPiece) -> int:
     """Determine risk level based on content and category"""
-    content_lower = piece.content.lower()
+    content_lower = piece.snippet.lower()
+    
+    score = 0.0
     
     # High risk indicators
     high_risk_keywords = [
@@ -179,43 +211,21 @@ def determine_risk_level(piece: InformationPiece, category_name: str) -> str:
     
     # Check for high risk
     if any(keyword in content_lower for keyword in high_risk_keywords):
-        return "high"
+        return 10
     
     # Check for medium risk
-    if any(keyword in content_lower for keyword in medium_risk_keywords):
-        return "medium"
+    for keyword in medium_risk_keywords:
+        if keyword in content_lower:
+            score += 3
     
-    # Check category-based risk
-    if category_name.lower() in ['contact_info', 'financial_info', 'personal_identifier']:
-        return "high"
-    elif category_name.lower() in ['professional', 'social_connections']:
-        return "medium"
-    
-    return "low"
-
-def calculate_overall_risk_score(risk_counts: dict, total_pieces: int) -> float:
-    """Calculate overall risk score based on risk distribution"""
-    if total_pieces == 0:
-        return 0.0
-    
-    # Risk weights
-    risk_weights = {"high": 10, "medium": 5, "low": 1}
-    
-    # Calculate weighted score
-    total_score = 0
-    for risk_level, count in risk_counts.items():
-        weight = risk_weights.get(risk_level, 0)
-        total_score += weight * count
-    
-    # Return average score (0-10 scale)
-    return total_score / total_pieces
+    return min(score, 10)
 
 def generate_executive_summary(query: str, total_findings: int, risk_counts: dict, overall_risk_score: float) -> str:
     """Generate executive summary based on findings"""
     risk_level_desc = "Low"
-    if overall_risk_score >= 7:
+    if overall_risk_score >= 4:
         risk_level_desc = "High"
-    elif overall_risk_score >= 4:
+    elif overall_risk_score >= 1.7:
         risk_level_desc = "Medium"
     
     summary = f"Digital footprint analysis for '{query}' reveals {total_findings} information pieces across multiple platforms. "
