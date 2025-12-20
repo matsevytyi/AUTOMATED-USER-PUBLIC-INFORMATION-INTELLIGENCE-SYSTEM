@@ -3,7 +3,7 @@ from datetime import datetime
 from dateutil.relativedelta import relativedelta
 
 from models import User, FacebookCookies
-from backend.utils.facebook_cookie_manager import FacebookCookieManager
+from backend.services.internal.facebook_cookie_manager import FacebookCookieManager
 
 
 class FacebookAuthService:
