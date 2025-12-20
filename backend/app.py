@@ -14,11 +14,14 @@ from backend.utils.config import Config
 from models import db, InformationPiece, ChatSession, ChatMessage
 from backend.llm.llm_abstraction import chat_with_context
 
+import ssl
+
 # Import services
 from services import AuthService, ReportService, FacebookAuthService, ProfileService
 
 
 def create_app():
+    
     app = Flask(__name__)
     app.config.from_object(Config)
     app.config["DEBUG"] = True
@@ -86,8 +89,10 @@ def login():
         )
         return jsonify(result), 200
     except ValueError as e:
+        print(f"Login error: {e}")
         return jsonify({'success': False, 'message': str(e)}), 401
     except Exception as e:
+        print(f"Login error: {e}")
         return jsonify({'success': False, 'message': 'Login failed. Please try again.'}), 500
 
 
@@ -112,6 +117,9 @@ def confirm_email():
 def search():
     """Create a new report based on search query"""
     try:
+        
+        print(request.json)
+        
         current_user_email = get_jwt_identity()
         data = request.json
         query = data.get('query', '').strip()
@@ -383,6 +391,7 @@ def post_session_message(session_id):
                     .limit(40)
                     .all()
             ]
+            
             user_msg += "\n\nContext:\n" + '\n\n'.join(context) if context else ""
             
     except Exception as e:
@@ -398,23 +407,51 @@ def post_session_message(session_id):
         db.session.rollback()
 
     # Prepare messages for LLM
-    system_prompt = {
+    if scope == 'datapieces' and datapiece_ids:
+        system_prompt = {
+            'role': 'system',
+            'content': """You respond as a friendly assistant who explains risks and insights based on the provided sources and helps to maintain awareness about digital-footprint security and protecting yourself online. Evaluate information that you see as a whole (but part os smth bigger meaning there may be nore datapieces), its meaning, security implications, and exposure risks. 
+
+                            The report is about the user who asked and contains information that was already found about him.
+
+                            Do not hallucinate.
+                            Draw conclusions from the datapiece (and context) and from similar datapieces (provided under Similar Pieces).
+                            If you do not know, say exactly that.
+                            Do not reveal technical details (such as IDs).
+                            You may give information based on links, context snippets, and titles.
+
+                            When answering:
+                            Make the explanation short and understandable.
+                            Elaborate on whether having this datapiece exposed online (not published intentionally, but visible to others) is dangerous and why.
+                            Clarify privacy or safety issues related to <strong>user-exposed data</strong>.
+                            Provide any other helpful comments.
+                            Tell the user exactly which source link the information came from.
+
+                            Use HTML tags (i.e. <strong>, <italic> or <br>) instead of Markdown.
+                                                """ }
+    else:
+        system_prompt = {
         'role': 'system',
-        'content': """You respond as a friendly assistant who explains user information based only on the provided sources and helps to keep awareness about digital footprint security and protecting yourself online
+        'content': """You respond as a friendly assistant who explains risks and insights based on the entire provided report.
+                        The report may contain multiple datapieces about the user, and your job is to evaluate the document as a whole, its meaning, security implications, and exposure risks.
+                        The report is about the user who asked and contains information that was already found about him.
 
-                    Do not hallucinate.
-                    Draw conclusions from the datapiece (and context), similar datapieces (provided under Similar Pieces)
-                    If you don't know, say exactly that.
-                    Do not give away technical details (such as ID), you are allowed to give away information based on links, context snippets and titles
+                        Do not hallucinate.
+                        Base all conclusions strictly on the content of the report and its context.
+                        If something is unclear or missing, state exactly that.
+                        Do not reveal technical identifiers (such as full IDs, tokens, hashes).
+                        You may summarize or refer to information based on links, context snippets, titles, or descriptive fields included in the report.
 
-                    When answering:
-                    - Make the explanation short and understandable.
-                    - Elaborate whether disposing this datapiece online is very bad and why
-                    - Tell the user where the information came from (source link).
+                        When answering:
+                        Keep explanations short and easy to understand.
+                        Evaluate whether having this entire report exposed online is dangerous, and explain why.
+                        Mention any notable privacy, security, or reputation concerns.
+                        Provide any other relevant commentary that could help the user protect themselves.
+                        Always specify where each insight comes from using the given source links or references.
 
-                    Use ONLY html tags (i.e. <strong>, <italic> or <br>
-                    """
-    }
+                        Use HTML tags (e.g., <strong>, <italic>, <br>) instead of Markdown.
+                        """ }
+    
     messages = [system_prompt, {'role': 'user', 'content': user_msg}]
 
     # Call LLM abstraction with fallback
@@ -478,4 +515,15 @@ def home():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    
+    # setup TLS 1.3/HTTPS
+    
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    context.minimum_version = ssl.TLSVersion.TLSv1_3
+    
+    cert_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'certs/cert.pem') 
+    key_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'certs/key.pem')
+    
+    context.load_cert_chain(cert_path, key_path)
+    
+    app.run(debug=True, host='0.0.0.0', port=5000, ssl_context=context, threaded=True)
