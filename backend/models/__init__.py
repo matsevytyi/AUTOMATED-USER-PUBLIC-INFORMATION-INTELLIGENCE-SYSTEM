@@ -1,5 +1,8 @@
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
+
+from backend.utils.AES256_encrypted_type import EncryptedString
+
 import json
 
 db = SQLAlchemy()
@@ -12,6 +15,7 @@ class User(db.Model):
     theme = db.Column(db.String(20), nullable=True, default='device')
     confirmed = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    average_misuse_score = db.Column(db.Float, nullable=True)
     
     # Relationships
     reports = db.relationship('Report', backref='user', lazy=True)
@@ -24,13 +28,15 @@ class Report(db.Model):
     user_query = db.Column(db.Text, nullable=False)
     status = db.Column(db.String(20), default='pending')
     generated_at = db.Column(db.DateTime, default=datetime.utcnow)
+    generation_time_seconds = db.Column(db.Integer, default=45.0)
+    overall_risk_score = db.Column(db.Float, default=0.0)
     
-    # Report data (stored as JSON)
-    executive_summary = db.Column(db.Text)
-    risk_distribution = db.Column(db.Text)  # JSON string
-    detailed_findings = db.Column(db.Text)  # JSON string
-    recommendations = db.Column(db.Text)  # JSON string
-    source_distribution = db.Column(db.Text)  # JSON string
+    # Report data (stored as JSON), encrypted
+    executive_summary = db.Column(EncryptedString)
+    risk_distribution = db.Column(EncryptedString)  # JSON string
+    detailed_findings = db.Column(EncryptedString)  # JSON string
+    recommendations = db.Column(EncryptedString)  # JSON string
+    source_distribution = db.Column(EncryptedString)  # JSON string
     
     def to_dict(self):
         return {
@@ -51,6 +57,7 @@ class SearchHistory(db.Model):
     user_query = db.Column(db.Text, nullable=False)
     report_id = db.Column(db.String(50), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    local_misuse_score = db.Column(db.Float, nullable=True)  # because is added later
     
     def to_dict(self):
         return {
@@ -68,13 +75,13 @@ class InformationPiece(db.Model):
     source_id = db.Column(db.Integer, db.ForeignKey('discover_source.id'), nullable=False)
     
     source = db.Column(db.Text, nullable=False)
-    content = db.Column(db.Text, nullable=False)
+    content = db.Column(EncryptedString, nullable=False)
     
     relevance_score = db.Column(db.Float, nullable=True) # because is added later
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    is_verified_by_user = db.Column(db.Boolean, default=False)
+
     # Short chat context and human-friendly title
-    snippet = db.Column(db.Text, nullable=True)
+    snippet = db.Column(EncryptedString, nullable=True)
     
     repetition_count = db.Column(db.Integer, default=1)
     
