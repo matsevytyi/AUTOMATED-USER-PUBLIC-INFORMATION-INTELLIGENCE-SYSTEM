@@ -6,13 +6,12 @@ from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
 from backend.utils.config import Config
 
 class CrawlerService:
-    def __init__(self, min_words_threshold=2):
+    def __init__(self, min_words_threshold=1):
         self.browser_config = BrowserConfig(
             headless=True,  
             verbose=False,
             user_agent_mode="custom",
             user_agent_generator_config={"user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36"}
-    
         )
         self.min_word_threshold = min_words_threshold
         # thresholds for adaptive fallback

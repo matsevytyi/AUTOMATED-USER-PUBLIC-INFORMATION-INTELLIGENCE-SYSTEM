@@ -17,7 +17,6 @@ headers = {
     "Accept-Language": "en-US,en;q=0.9",
 }
 
-# Usage: 1 request (not N=num_results)
 def search(query: str, num_results: int = 5) -> list:
     """
     Search Google Custom Search API and return top-N results.

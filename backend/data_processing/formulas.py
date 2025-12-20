@@ -21,8 +21,8 @@ def normalize_text(s: Optional[str]) -> str:
     return " ".join(s.lower().strip().split())
 
 
-def fuzzy_score(a: str, b: str) -> float:
-    """0..1 fuzzy similarity (partial token-aware)."""
+def levenstain_score(a: str, b: str) -> float:
+    """0..1 levenstain similarity (partial token-aware)."""
     if not a or not b:
         return 0.0
     return fuzz.partial_ratio(a, b) / 100.0
@@ -42,19 +42,19 @@ def semantic_score(a: str, b: str, model=None) -> float:
 
 
 def combined_match(a: str, b: str,
-                   fuzzy_threshold: float = Config.FUZZY_THRESHOLD,
+                   levenstain_threshold: float = Config.LEVENSTAIN_THRESHOLD,
                    semantic_threshold: float = Config.SEMANTIC_THRESHOLD,
                    model=None) -> Tuple[bool, Dict[str, float]]:
     """
-    Return (triggered_bool, {'fuzzy':..., 'semantic':...})
-    triggered if fuzzy >= fuzzy_threshold OR semantic >= semantic_threshold.
+    Return (triggered_bool, {'levenstain':..., 'semantic':...})
+    triggered if levenstain >= levenstain_threshold OR semantic >= semantic_threshold.
     """
     a_n = normalize_text(a)
     b_n = normalize_text(b)
-    f = fuzzy_score(a_n, b_n)
+    f = levenstain_score(a_n, b_n)
     s = semantic_score(a_n, b_n, model=model)
-    triggered = (f >= fuzzy_threshold) or (s >= semantic_threshold)
-    return triggered, {"fuzzy": f, "semantic": s}
+    triggered = (f >= levenstain_threshold) or (s >= semantic_threshold)
+    return triggered, {"levenstain": f, "semantic": s}
 
 # -------------------------
 # Relevance score (4.5.3.3)
@@ -70,7 +70,7 @@ def name_match_score(target_name: str, candidate_name: str) -> float:
         return 0.0
     a = normalize_text(target_name)
     b = normalize_text(candidate_name)
-    dist = fuzzy_score(a, b)
+    dist = levenstain_score(a, b)
     return dist
 
 

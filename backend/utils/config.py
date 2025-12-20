@@ -21,7 +21,7 @@ class Config:
     USE_PRUNING_FILTER_BACKUP = cfg['use_pruning_filter_backup']
 
     APPLIED_REPORT_QUERY_MATCHING_MODE = cfg['applied_report_query_matching_mode']
-    FUZZY_THRESHOLD = cfg['fuzzy_threshold']
+    LEVENSTAIN_THRESHOLD = cfg['levenstain_threshold']
     SEMANTIC_THRESHOLD = cfg['semantic_threshold']
 
     NAME_COEFFICIENT = cfg['name_coefficient']

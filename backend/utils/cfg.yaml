@@ -23,15 +23,15 @@ available_assistant_models:
 # --- filter details ---
 
 # Search and retrieval
-min_match_words_threshold: 2
+min_match_words_threshold: 1
 
 BM_25_primary_threshold: 0.95
 BM_25_secondary_threshold: 0.9
 use_pruning_filter_backup: false
 
 # Per-report calculations
-applied_report_query_matching_mode:  combined # fuzzy, semantic, combined
-fuzzy_threshold: 0.75
+applied_report_query_matching_mode:  combined # levenstain, semantic, combined
+levenstain_threshold: 0.75
 semantic_threshold: 0.8
 
 # Per-infopiece calculations
