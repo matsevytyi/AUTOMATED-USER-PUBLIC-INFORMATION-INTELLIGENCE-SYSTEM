@@ -2,6 +2,9 @@ import os
 import yaml
 from datetime import timedelta
 
+from dotenv import load_dotenv
+load_dotenv()
+
 # Load YAML config
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), 'cfg.yaml')
 with open(CONFIG_PATH, 'r') as f:
@@ -25,9 +28,15 @@ class Config:
     CONTEXT_COEFFICIENT = cfg['context_coefficient']
     CATEGORY_WEIGHTS = cfg['category_weights']
     
-    # --- loaded from .env ---
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-change-in-production'
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///profolio.db'
+    DB_USER = os.environ.get('DB_USER')
+    DB_PASSWORD = os.environ.get('DB_PASSWORD')
+    DB_HOST = cfg['db_host']
+    DB_PORT = cfg['db_port']
+    DB_NAME = cfg['db_name']
+
+    # Construct the SQLAlchemy connection string
+    SQLALCHEMY_DATABASE_URI = f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?sslmode=require"
+    
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY') or 'jwt-secret-string'
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=24)
