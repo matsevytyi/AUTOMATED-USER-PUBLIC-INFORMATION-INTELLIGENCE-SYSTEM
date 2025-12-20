@@ -3,24 +3,118 @@ from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
 from crawl4ai.content_filter_strategy import PruningContentFilter,BM25ContentFilter
 from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
 
+import regex as re
+
 from backend.utils.config import Config
 
-class CrawlerService:
+class WebScrapingService:
+    
     def __init__(self, min_words_threshold=1):
+        
         self.browser_config = BrowserConfig(
             headless=True,  
             verbose=False,
             user_agent_mode="custom",
             user_agent_generator_config={"user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36"}
         )
+        
         self.min_word_threshold = min_words_threshold
         # thresholds for adaptive fallback
         self.primary_bm25_threshold = Config.BM_25_PRIMARY_THRESHOLD
         self.fallback_bm25_threshold = Config.BM_25_SECONDARY_THRESHOLD
         self.enable_pruning_fallback = Config.USE_PRUNING_FILTER_BACKUP
+    
+    # ====================== Public API ======================
+        
+    def smart_parse_website(self, url, user_query):
+        
+        """
+        This function takes a URL and a user query, parses the website with AI (using the crawler service),
+        and then formats the output into a JSON object.
+
+        The output JSON object is a dictionary with the following keys:
+        - raw: the raw markdown text of the website
+        - fit: a list of strings, each representing a "fit" of the user query to the website text.
+
+        If the user query is not found in the website text, the function returns None.
+        """
+        
+        raw, fit = self._get_markdown(url, user_query)
+        
+        if isinstance(fit, list):
+            return [self._answer_to_json(fit_text) if fit_text else None for fit_text in fit]
+        else:
+            return self._answer_to_json(fit)
+        
+    
+    # ====================== Private API (may be used) ======================
         
 
-    async def fetch_markdown(self, url: str, user_query, enable_cache=False):
+    def _answer_to_json(self, raw_text):
+        """
+        Converts a raw markdown text to a JSON object.
+
+        The JSON object will have the following keys:
+        - name: the name of the link (if present)
+        - link: the link URL (if present)
+        - title: the title of the page (if present)
+        - description: the description of the page (if present)
+        - sections: a list of dictionaries, each with the following keys:
+            - heading: the heading of the section (in **bold**)
+            - content: a list of strings, each representing a line of content in the section
+        - resources: a list of dictionaries, each with the following keys:
+            - name: the name of the resource (if present)
+            - link: the link URL of the resource (if present)
+
+        The function will return None if the input is None or empty.
+        """
+        
+        if not raw_text:
+            return None
+        
+        # name and link from markdown-style link
+        result = re.sub(r'\(http[s]?://\S+\)', '', raw_text)
+        result = re.sub(r'http[s]?://\S+', '', result)
+        result = result.replace('\n', '')
+        result = result.replace('*', '')
+        result = result.replace('#', '')
+        result = re.sub(r'\]', '', result)
+        result = re.sub(r'\[', '', result)
+        result = re.sub(r'\(javascript:void\\\(0\\\);\)', '', result)
+
+        return result
+        
+    def _get_markdown(self, url, user_query, enable_cache=False):
+        """
+        Run either fetch_markdown or fetch_multiple_markdown, depending on whether
+        the argument `url` is a list or not. This is a convenience function to allow
+        for simpler use.
+
+        Args:
+            user_query (str): The query to BM25 filter the results with.
+
+        Returns:
+            tuple: A tuple of two elements. The first element is a list of raw markdown
+            strings, and the second element is a list of markdown strings that fit the
+            user query according to the BM25 filter.
+        """
+
+        
+        if isinstance(url, list):
+            used_func_alias = self._fetch_multiple_markdown
+        else:
+            used_func_alias = self._fetch_markdown
+        
+        loop = asyncio.new_event_loop()
+        
+        return loop.run_until_complete(
+            used_func_alias(url, user_query, enable_cache)
+            )
+        
+    
+    # ====================== Private API ======================    
+
+    async def _fetch_markdown(self, url: str, user_query, enable_cache=False):
         # Try primary BM25 threshold first, then fallback thresholds (adaptive)
         thresholds = [self.primary_bm25_threshold, self.fallback_bm25_threshold]
 
@@ -86,7 +180,7 @@ class CrawlerService:
             print(f"[ERROR] Exception while crawling {url}: {last_err}")
             return None, None
 
-    async def fetch_multiple_markdown(self, urls: list, user_query, enable_cache=False):
+    async def _fetch_multiple_markdown(self, urls: list, user_query, enable_cache=False):
         
         
         run_config = CrawlerRunConfig(
@@ -139,32 +233,7 @@ class CrawlerService:
                     fit_markdowns.append(fit)
 
             return raw_markdowns, fit_markdowns
-
-    def get_markdown(self, url, user_query, enable_cache=False):
-        """
-        Run either fetch_markdown or fetch_multiple_markdown, depending on whether
-        the argument `url` is a list or not. This is a convenience function to allow
-        for simpler use.
-
-        Args:
-            user_query (str): The query to BM25 filter the results with.
-
-        Returns:
-            tuple: A tuple of two elements. The first element is a list of raw markdown
-            strings, and the second element is a list of markdown strings that fit the
-            user query according to the BM25 filter.
-        """
-
         
-        if isinstance(url, list):
-            used_func_alias = self.fetch_multiple_markdown
-        else:
-            used_func_alias = self.fetch_markdown
-        
-        loop = asyncio.new_event_loop()
-        
-        return loop.run_until_complete(
-            used_func_alias(url, user_query, enable_cache)
-            )
-        
-crawler_service = CrawlerService()
+web_scraping_service_singletone = WebScrapingService()
+
+
