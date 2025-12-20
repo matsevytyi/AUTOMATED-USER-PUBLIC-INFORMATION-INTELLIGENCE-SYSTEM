@@ -103,68 +103,100 @@ class FacebookCookieManager:
             print(f"[FB COOKIE VERIFY] request failed: {e}")
             return False
         
-@staticmethod
-def login_with_credentials(login: str, password: str, headless: bool = True, wait_seconds: int = 10) -> dict:
-    """Attempt to log into Facebook using Selenium and return cookie map {name: value}.
-    Note: This may fail on accounts with 2FA or checkpoint flows.
-    """
-    options = Options()
-    if headless:
-        options.add_argument('--headless=new')
-        options.add_argument('--disable-gpu')
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
+    @staticmethod
+    def login_with_credentials(login: str, password: str, headless: bool = True, wait_seconds: int = 10) -> dict:
+        """Attempt to log into Facebook using Selenium and return cookie map {name: value}.
+        Supports both Local (ChromeDriver) and Docker (Remote Selenium).
+        """
+        # 1. Setup Options (Critical for Docker stability)
+        options = Options()
+        if headless:
+            options.add_argument('--headless=new')
+            options.add_argument('--disable-gpu')
+        
+        options.add_argument('--no-sandbox')
+        options.add_argument('--disable-dev-shm-usage')
+        options.add_argument('--disable-notifications')
+        options.add_argument("--start-maximized")
+        
+        # 2. Determine Connection Mode
+        # Check environment variable for Docker URL
+        remote_url = "http://localhost:4444/wd/hub"
+        driver = None
 
-    service = Service(ChromeDriverManager().install())
-    driver = webdriver.Chrome(service=service, options=options)
-
-    try:
-        # Use mobile login which is often simpler
-        driver.get('https://m.facebook.com/login.php')
-        time.sleep(1.2)
-
-        # Find fields
         try:
-            email_el = driver.find_element(By.NAME, 'email')
-            pass_el = driver.find_element(By.NAME, 'pass')
-        except Exception:
-            # Try desktop login form
-            email_el = driver.find_element(By.ID, 'email')
-            pass_el = driver.find_element(By.ID, 'pass')
+            if remote_url:
+                print(f"[AUTH] Connecting to Remote Selenium at: {remote_url}")
+                driver = webdriver.Remote(
+                    command_executor=remote_url,
+                    options=options
+                )
+            else:
+                print("[AUTH] Using Local ChromeDriver")
+                service = Service(ChromeDriverManager().install())
+                driver = webdriver.Chrome(service=service, options=options)
 
-        email_el.clear()
-        email_el.send_keys(login)
-        pass_el.clear()
-        pass_el.send_keys(password)
+            # 3. Login Logic (Existing Flow)
+            # Use mobile login which is often simpler and lighter
+            driver.get('https://m.facebook.com/login.php')
+            time.sleep(2)
 
-        # submit
-        try:
-            login_btn = driver.find_element(By.NAME, 'login')
-            login_btn.click()
-        except Exception:
-            pass
+            # Find fields (Try mobile selectors first, then desktop)
+            try:
+                email_el = driver.find_element(By.NAME, 'email')
+                pass_el = driver.find_element(By.NAME, 'pass')
+            except Exception:
+                # Fallback to ID selectors often found on desktop/older mobile views
+                email_el = driver.find_element(By.ID, 'email')
+                pass_el = driver.find_element(By.ID, 'pass')
 
-        # Wait a bit for redirect
-        time.sleep(wait_seconds)
+            email_el.clear()
+            email_el.send_keys(login)
+            pass_el.clear()
+            pass_el.send_keys(password)
 
-        # Check if we are logged in by presence of c_user cookie
-        cookies = driver.get_cookies()
-        cookie_map = {c['name']: c['value'] for c in cookies}
+            # Submit
+            try:
+                # Try finding by name 'login' first
+                login_btn = driver.find_element(By.NAME, 'login')
+                login_btn.click()
+            except Exception:
+                try:
+                    # Fallback for some versions of m.facebook
+                    login_btn = driver.find_element(By.CSS_SELECTOR, 'button[type="button"], button[name="login"]')
+                    login_btn.click()
+                except:
+                    # If button click fails, try submitting the form via the password field
+                    pass_el.submit()
 
-        # Basic validation
-        if 'c_user' in cookie_map and 'xs' in cookie_map:
-            return cookie_map
-        else:
-            # could be checkpoint/2FA — return what we have but caller should verify
-            return cookie_map
-    finally:
-        try:
-            driver.quit()
-        except Exception:
-            pass
+            # Wait for redirect/login processing
+            print(f"[AUTH] Waiting {wait_seconds}s for login redirection...")
+            time.sleep(wait_seconds)
 
+            # 4. Extract Cookies
+            cookies = driver.get_cookies()
+            cookie_map = {c['name']: c['value'] for c in cookies}
 
+            # 5. Basic Validation
+            if 'c_user' in cookie_map and 'xs' in cookie_map:
+                print("[AUTH] Login successful: c_user and xs found.")
+                return cookie_map
+            else:
+                print("[AUTH] Warning: 'c_user' or 'xs' missing. Possible 2FA or Checkpoint.")
+                # You might want to log the current URL here to debug
+                # print(f"Ended at: {driver.current_url}")
+                return cookie_map
 
+        except Exception as e:
+            print(f"[AUTH] Critical Error during login: {e}")
+            return {}
+            
+        finally:
+            if driver:
+                try:
+                    driver.quit()
+                except Exception:
+                    pass
     
 # EXAMPLE cookies:
 """
