@@ -1056,7 +1056,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const xs    = document.getElementById('cookie-xs').value.trim();
         const datr  = document.getElementById('cookie-datr').value.trim();
         const fr    = document.getElementById('cookie-fr').value.trim();
-        const spin  = document.getElementById('cookie-spin').value.trim();
+        const sb  = document.getElementById('cookie-sb').value.trim();
 
         // Build cookies object (only add fields if non-empty)
         let cookiesObj = {};
@@ -1064,7 +1064,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (xs)     cookiesObj.xs     = xs;
         if (datr)   cookiesObj.datr   = datr;
         if (fr)     cookiesObj.fr     = fr;
-        if (spin)   cookiesObj.spin   = spin;
+        if (sb)   cookiesObj.sb   = sb;
 
         postFacebookCookies(cookiesObj);
     });
