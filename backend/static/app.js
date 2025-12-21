@@ -703,10 +703,12 @@ function displayReport(report) {
     const highRiskCount = document.getElementById('high-risk-count');
     const mediumRiskCount = document.getElementById('medium-risk-count');
     const lowRiskCount = document.getElementById('low-risk-count');
+
+    const riskDist = report.risk_distribution || {};
     
-    if (highRiskCount) highRiskCount.textContent = report.risk_distribution.high;
-    if (mediumRiskCount) mediumRiskCount.textContent = report.risk_distribution.medium;
-    if (lowRiskCount) lowRiskCount.textContent = report.risk_distribution.low;
+    if (highRiskCount) highRiskCount.textContent = riskDist.high || 0;
+    if (mediumRiskCount) mediumRiskCount.textContent = riskDist.medium || 0;
+    if (lowRiskCount) lowRiskCount.textContent = riskDist.low || 0;
     
     // Update detailed findings
     const findingsList = document.getElementById('findings-list');
@@ -747,13 +749,19 @@ function displayReport(report) {
         `;
         }).join('');
     }
-    
+
     // Update recommendations
     const recommendationsList = document.getElementById('recommendations-list');
     if (recommendationsList) {
-        recommendationsList.innerHTML = report.recommendations.map(rec => `
-            <div class="recommendation-item">${rec}</div>
-        `).join('');
+        const recs = report.recommendations || [];
+        
+        if (recs.length === 0) {
+            recommendationsList.innerHTML = '<div class="empty-state">No recommendations available.</div>';
+        } else {
+            recommendationsList.innerHTML = recs.map(rec => `
+                <div class="recommendation-item">${rec}</div>
+            `).join('');
+        }
     }
     
     // Update source distribution
@@ -994,22 +1002,28 @@ document.addEventListener('DOMContentLoaded', function() {
             setButtonLoading(submitBtn, true);
             showLoading();
 
-            const response = await searchReport(query);
+            try {
 
-            if (response.success) {
-                AppState.searchHistory.unshift(response.report);
-                displayReport(response.report);
-                loadSearchHistory();
-                showNotification('Report generated successfully', 'success');
+                const response = await searchReport(query);
 
+                if (response.success) {
+                    AppState.searchHistory.unshift(response.report);
+                    displayReport(response.report);
+                    loadSearchHistory();
+                    showNotification('Report generated successfully', 'success');
+
+                } else {
+                    showNotification(response.message, 'error');
+                }
+
+            } catch (error) {
+                showNotification(error.message, 'error');
+            } finally {
                 hideLoading();
                 setButtonLoading(submitBtn, false);
 
-            } else {
-                showNotification(response.message, 'error');
-                hideLoading();
-                setButtonLoading(submitBtn, false);
             }
+            
             
         });
     }
