@@ -1388,3 +1388,43 @@ async function getFacebookCookiesStatus() {
 
 // Make loadReport function global for onclick handlers
 window.loadReport = loadReport;
+
+// Export report function
+async function exportReport(format) {
+    const reportId = document.getElementById('report-id').textContent;
+    if (!reportId) {
+        showNotification('No report loaded', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/reports/${reportId}/export?format=${format}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': 'Bearer ' + AppState.jwt
+            }
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            showNotification(errorData.message || 'Export failed', 'error');
+            return;
+        }
+
+        // Create download link
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `report_${reportId}.${format}`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+
+        showNotification(`Report exported as ${format.toUpperCase()}`, 'success');
+    } catch (e) {
+        console.error('Export error:', e);
+        showNotification('Export failed', 'error');
+    }
+}
