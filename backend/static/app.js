@@ -866,6 +866,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 setButtonLoading(submitBtn, false);
                 showNotification(response.message, 'success');
                 showPage('confirm');
+                // Clear register fields
+                document.getElementById('register-email').value = '';
+                document.getElementById('register-password').value = '';
+                document.getElementById('register-name').value = '';
             } else {
                 showNotification(response.message, 'error');
                 setButtonLoading(submitBtn, false);
@@ -913,6 +917,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 await reloadSearchHistory();
                 // update FB cookies status for logged-in user
                 getFacebookCookiesStatus();
+                // Clear login fields
+                document.getElementById('login-email').value = '';
+                document.getElementById('login-password').value = '';
             } else {
                 showNotification(response.message, 'error');
                 setButtonLoading(submitBtn, false);
@@ -942,6 +949,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 setButtonLoading(submitBtn, false);
                 showNotification(response.message || 'Password changed successfully', 'success');
                 showPage('dashboard');
+                // Clear password fields
+                document.getElementById('current-password').value = '';
+                document.getElementById('new-password').value = '';
+                document.getElementById('confirm-password').value = '';
             } else {
                 showNotification(response.message ? ('Try Again! ' + response.message) : 'Failed to change password', 'error');
                 setButtonLoading(submitBtn, false);
@@ -1011,6 +1022,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     displayReport(response.report);
                     loadSearchHistory();
                     showNotification('Report generated successfully', 'success');
+                    // Clear the search query field
+                    queryField.value = '';
 
                 } else {
                     showNotification(response.message, 'error');
@@ -1120,6 +1133,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     // refresh status and redirect shortly so user sees notification
                     await getFacebookCookiesStatus();
                     setTimeout(() => showPage('dashboard'), 500);
+                    // Clear Facebook login fields
+                    document.getElementById('fb-login').value = '';
+                    document.getElementById('fb-password').value = '';
                 } else {
                     const msg = data.message || data.error || 'Login failed';
                     showNotification(msg, 'error');
