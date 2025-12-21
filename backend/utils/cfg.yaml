@@ -25,9 +25,9 @@ available_assistant_models:
 # Search and retrieval
 min_match_words_threshold: 1
 
-BM_25_primary_threshold: 0.95
-BM_25_secondary_threshold: 0.9
-use_pruning_filter_backup: false
+BM_25_primary_threshold: 0.93
+BM_25_secondary_threshold: 0.5
+use_pruning_filter_backup: true
 
 # Per-report calculations
 applied_report_query_matching_mode:  combined # levenstain, semantic, combined

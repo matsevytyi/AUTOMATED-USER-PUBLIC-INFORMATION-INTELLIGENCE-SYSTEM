@@ -25,9 +25,9 @@ class DataCollectionService:
         threads = []
 
 
-        # if use_facebook:
-        #     threads.append(threading.Thread(target=self._facebook_profiles, args=(search_request, results, fb_cookies)))
-        #     threads.append(threading.Thread(target=self._facebook_search, args=(search_request, results, fb_cookies)))
+        if use_facebook:
+            threads.append(threading.Thread(target=self._facebook_profiles, args=(search_request, results, fb_cookies)))
+            threads.append(threading.Thread(target=self._facebook_search, args=(search_request, results, fb_cookies)))
         
         if use_general:
             threads.append(threading.Thread(target=self._general_scraping, args=(search_request, results)))
@@ -50,6 +50,7 @@ class DataCollectionService:
         print("Running general-purpose scraping...")
         
         links_to_be_scraped = []
+        answer_links = []
             
         temp_links = search(search_request, num_results=100)
         
@@ -59,15 +60,17 @@ class DataCollectionService:
         links_to_be_scraped += temp_links        
                     
         for link in links_to_be_scraped:
-            valuable_text = web_scraping_service_singletone.smart_parse_website(link["link"], link["bm25_filter"])
+            valuable_text = web_scraping_service_singletone.smart_parse_website(link["link"], search_request)
             if valuable_text is None:
                 link["valuable_text"] = link["snippet"]
             else:
                 link["valuable_text"] = valuable_text
                 
-            results.put(link)
+            answer_links.append(link)
                 
             del link["snippet"] # free memory
+        
+        results.put(answer_links)
     
     
     def _facebook_profiles(self, search_request, results, cookies):
