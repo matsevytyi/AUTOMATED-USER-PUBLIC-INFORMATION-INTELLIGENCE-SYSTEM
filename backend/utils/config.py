@@ -1,7 +1,6 @@
 import os
 import yaml
 from datetime import timedelta
-
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -15,6 +14,16 @@ class Config:
     SEMANTIC_MODEL = cfg['semantic_model']
     NER_MODEL = cfg['NER_model']
     AVAILABLE_ASSISTANT_MODELS = cfg['available_assistant_models']
+    
+    SELECTED_LLM_PROVIDER = cfg.get('selected_assistant_provider', 'groq')
+    SELECTED_LLM_MODEL = cfg.get('selected_assistant_model', 'llama-3.3-70b-versatile')
+    
+    # API Keys from environment
+    GROQ_API_KEY = os.environ.get('GROQ_API_KEY')
+    OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
+    
+    GROQ_BASE_URL = os.environ.get('GROQ_BASE_URL', "https://api.groq.com/openai/v1")
+    OLLAMA_BASE_URL = os.environ.get('OLLAMA_BASE_URL', 'http://localhost:11434')
     
     BM_25_PRIMARY_THRESHOLD = cfg['BM_25_primary_threshold']
     BM_25_SECONDARY_THRESHOLD = cfg['BM_25_secondary_threshold']
@@ -42,8 +51,3 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY') or 'jwt-secret-string'
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=24)
-    
-    GROQ_API_KEY = os.environ.get('GROQ_API_KEY')
-    OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
-    LLAMA_PORT = int(os.environ.get('LLAMA_PORT') or 8000)
-    LLAMA_HOST = os.environ.get('LLAMA_HOST') or 'localhost'

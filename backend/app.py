@@ -14,7 +14,7 @@ from datetime import datetime
 from backend.utils.scheduled import start_scheduler
 from backend.utils.config import Config
 from models import db, InformationPiece, ChatSession, ChatMessage, User
-from backend.llm.llm_abstraction import chat_with_context
+from backend.wrappers.llm_wrapper import chat
 
 import ssl
 
@@ -481,8 +481,8 @@ def get_session_messages(session_id):
 
 
 @app.route('/api/chat/sessions/<int:session_id>/messages', methods=['POST'])
-@active_required
 @jwt_required()
+@active_required
 def post_session_message(session_id):
     """Post a message to a chat session and get AI response"""
     data = request.json or {}
@@ -590,7 +590,7 @@ def post_session_message(session_id):
 
     # Call LLM abstraction with fallback
     try:
-        llm_result = chat_with_context(
+        llm_result = chat(
             provider or 'groq', 
             messages, 
             context, 
@@ -620,8 +620,8 @@ def post_session_message(session_id):
     return jsonify({'success': True, 'assistant': reply, 'sources': sources}), 200
 
 @app.route('/api/settings/delete-account', methods=['POST'])
-@active_required
 @jwt_required()
+@active_required
 def delete_account():
     """Delete user account and related data"""
     data = request.json

@@ -8,6 +8,19 @@ provider is unavailable the function will fall back to a prioritized list.
 """
 from typing import List, Dict, Any
 import os
+import requests
+
+from backend.utils.config import Config
+"""Simple LLM abstraction with pluggable providers.
+
+This module exposes `chat_with_context(provider, messages, context, **opts)` which
+returns a dict: { 'reply': str, 'sources': [...] }.
+
+Currently providers are implemented as lightweight adapters. If the chosen
+provider is unavailable the function will fall back to a prioritized list.
+"""
+from typing import List, Dict, Any
+import os
 import json
 from datetime import datetime
 import requests
@@ -23,7 +36,7 @@ def _stub_response(messages: List[Dict[str, Any]], context: List[Dict[str, str]]
 	return {'reply': reply, 'sources': sources}
 
 
-def chat_with_context(provider: str, messages: List[Dict[str, Any]], context: List[Dict[str, Any]], fallback: List[str] = None, **opts) -> Dict[str, Any]:
+def chat(provider: str, messages: List[Dict[str, Any]], context: List[Dict[str, Any]], fallback: List[str] = None, **opts) -> Dict[str, Any]:
 	"""Dispatch a chat request to a provider. Returns {'reply': str, 'sources': [...]}
 
 	- provider: provider id requested ('groq','openai','local')
@@ -64,7 +77,7 @@ def chat_with_context(provider: str, messages: List[Dict[str, Any]], context: Li
 				if not api_key:
 					continue
 				# allow overriding model name and base URL
-				model_name = os.environ.get('GROQ_MODEL', 'groq/compound-mini')
+				model_name = Config.SELECTED_LLM_MODEL or 'groq/compound-mini'
 				base_url = os.environ.get('GROQ_API_URL') or "https://api.groq.com/openai/v1/chat/completions"
 				try:
 					payload = {
@@ -107,4 +120,4 @@ def chat_with_context(provider: str, messages: List[Dict[str, Any]], context: Li
 
 if __name__ == '__main__':
 	# quick manual test
-	print(chat_with_context('openai', [{'role':'user','content':'Hello'}], [{'id': 1, 'snippet':'sample context'}]))
+	print(chat('openai', [{'role':'user','content':'Hello'}], [{'id': 1, 'snippet':'sample context'}]))

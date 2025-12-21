@@ -3,6 +3,9 @@ semantic_model: sentence-transformers/all-MiniLM-L6-v2
 
 NER_model: Davlan/bert-base-multilingual-cased-ner-hrl
 
+selected_assistant_provider: groq 
+selected_assistant_model: llama-3.3-70b-versatile
+
 available_assistant_models:
   - groq:
       - llama-3.3-70b-versatile      # best
