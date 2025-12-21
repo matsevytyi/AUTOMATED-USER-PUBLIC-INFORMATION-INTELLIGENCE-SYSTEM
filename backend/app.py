@@ -53,7 +53,7 @@ fb_auth_service = FacebookAuthService(db)
 profile_service = ProfileService(db)
 analytics_engine = AdminService(db)
 
-
+# ==================== SETTINGS AND ROLE-AUTH DECORATORS ====================
 @app.after_request
 def add_no_cache_headers(response):
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
@@ -73,6 +73,23 @@ def admin_required(f):
             return jsonify({
                 'success': False, 
                 'message': 'Access denied. Admin privileges required.'
+            }), 403
+            
+        return f(*args, **kwargs)
+    return decorated_function
+
+def active_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        current_user_email = get_jwt_identity()
+        
+        # Verify user exists and has admin flag
+        user = db.session.query(User).filter_by(email=current_user_email).first()
+        
+        if not user or getattr(user, 'is_deactivated', True):
+            return jsonify({
+                'success': False, 
+                'message': 'Access denied. Your account has been deactivated. Contact support@profolio.com'
             }), 403
             
         return f(*args, **kwargs)
@@ -135,6 +152,7 @@ def confirm_email():
 
 @app.route('/api/search', methods=['POST'])
 @jwt_required()
+@active_required
 def search():
     """Create a new report based on search query"""
     try:
@@ -163,6 +181,7 @@ def search():
 
 
 @app.route('/api/report/<report_id>', methods=['GET'])
+@active_required
 @jwt_required()
 def get_report(report_id):
     """Retrieve a specific report"""
@@ -178,6 +197,7 @@ def get_report(report_id):
 
 @app.route('/api/history', methods=['GET'])
 @jwt_required()
+@active_required
 def get_search_history():
     """Get user's search history"""
     try:
@@ -192,6 +212,7 @@ def get_search_history():
 
 @app.route('/api/reports/<report_id>/export', methods=['GET'])
 @jwt_required()
+@active_required
 def export_report(report_id):
     """Export a report to JSON or PDF"""
     format_type = request.args.get('format', 'json').lower()
@@ -288,6 +309,7 @@ def export_report(report_id):
 
 @app.route('/api/profile', methods=['GET'])
 @jwt_required()
+@active_required
 def get_profile():
     """Get user profile information"""
     try:
@@ -302,6 +324,7 @@ def get_profile():
 
 @app.route('/api/profile/password', methods=['POST'])
 @jwt_required()
+@active_required
 def change_password():
     """Change user password"""
     try:
@@ -324,6 +347,7 @@ def change_password():
 
 @app.route('/api/settings/theme', methods=['POST'])
 @jwt_required()
+@active_required
 def set_theme():
     """Set user theme preference"""
     try:
@@ -343,6 +367,7 @@ def set_theme():
 
 @app.route('/api/profile/facebook/cookies', methods=['POST'])
 @jwt_required()
+@active_required
 def update_facebook_cookies():
     """Save Facebook cookies for user"""
     try:
@@ -363,6 +388,7 @@ def update_facebook_cookies():
 
 @app.route('/api/profile/facebook/login', methods=['POST'])
 @jwt_required()
+@active_required
 def facebook_login_with_credentials():
     """Login to Facebook using credentials and save cookies"""
     try:
@@ -386,6 +412,7 @@ def facebook_login_with_credentials():
 
 @app.route('/api/profile/facebook/cookies', methods=['GET'])
 @jwt_required()
+@active_required
 def get_facebook_cookies_status():
     """Check if user has valid Facebook cookies"""
     try:
@@ -402,6 +429,7 @@ def get_facebook_cookies_status():
 
 @app.route('/api/profile/facebook/cookies', methods=['DELETE'])
 @jwt_required()
+@active_required
 def delete_facebook_cookies():
     """Delete user's Facebook cookies"""
     try:
@@ -417,6 +445,7 @@ def delete_facebook_cookies():
 
 @app.route('/api/chat/report/<report_id>/sessions', methods=['POST'])
 @jwt_required()
+@active_required
 def create_chat_session(report_id):
     """Create a chat session for a report"""
     data = request.json or {}
@@ -451,6 +480,7 @@ def create_chat_session(report_id):
 
 @app.route('/api/chat/sessions/<int:session_id>/messages', methods=['GET'])
 @jwt_required()
+@active_required
 def get_session_messages(session_id):
     """Get all messages for a chat session"""
     try:
@@ -465,6 +495,7 @@ def get_session_messages(session_id):
 
 
 @app.route('/api/chat/sessions/<int:session_id>/messages', methods=['POST'])
+@active_required
 @jwt_required()
 def post_session_message(session_id):
     """Post a message to a chat session and get AI response"""
@@ -603,6 +634,7 @@ def post_session_message(session_id):
     return jsonify({'success': True, 'assistant': reply, 'sources': sources}), 200
 
 @app.route('/api/settings/delete-account', methods=['POST'])
+@active_required
 @jwt_required()
 def delete_account():
     """Delete user account and related data"""
