@@ -315,6 +315,8 @@ function showPage(pageId) {
     // Page-specific initialization
     if (pageId === 'dashboard') {
         initializeDashboard();
+    } else if (pageId === 'admin-dashboard') {
+        initializeAdminDashboard();
     }
 }
 
@@ -660,6 +662,16 @@ function initializeDashboard() {
             userNameEl.textContent = AppState.currentUser.name;
         }
         loadSearchHistory();
+    }
+}
+
+function initializeAdminDashboard() {
+    if (AppState.currentUser) {
+        const userNameEl = document.getElementById('admin-user-name');
+        if (userNameEl) {
+            userNameEl.textContent = AppState.currentUser.name;
+        }
+        loadAdminStats();
     }
 }
 
@@ -1491,3 +1503,25 @@ async function exportReport(format) {
         showNotification('Export failed', 'error');
     }
 }
+
+// ADMIN FUNCTIONS
+
+async function loadAdminStats() {
+    console.log('[DEBUG] Loading admin stats...');
+    try {
+        const response = await fetch('/api/admin/stats', {
+            headers: { 'Authorization': 'Bearer ' + AppState.jwt }
+        });
+        const data = await response.json();
+        console.log('[DEBUG] Admin stats response:', data);
+        if (data.success) {
+            displayAdminStats(data.stats);
+        } else {
+            showNotification(data.message || 'Failed to load statistics', 'error');
+        }
+    } catch (e) {
+        console.error('Load admin stats error:', e);
+        showNotification('Failed to load statistics', 'error');
+    }
+}
+

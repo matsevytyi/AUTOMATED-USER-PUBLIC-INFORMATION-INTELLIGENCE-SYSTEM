@@ -18,6 +18,7 @@ import ssl
 
 # Import services
 from services import AuthService, ReportService, FacebookAuthService, ProfileService
+from backend.services.admin_service import AdminService
 
 
 def create_app():
@@ -48,6 +49,7 @@ auth_service = AuthService(db)
 report_service = ReportService(db)
 fb_auth_service = FacebookAuthService(db)
 profile_service = ProfileService(db)
+analytics_engine = AdminService(db)
 
 
 @app.after_request
@@ -594,6 +596,28 @@ def delete_account():
     print(f"[ACTION] Removing: user records, search history, cookies, LLM configs, chat data")
     
     return jsonify({'success': True, 'message': 'Account deleted'}), 200
+
+
+# ==================== ADMIN ROUTES ====================
+
+@app.route('/api/admin/stats', methods=['GET'])
+@jwt_required()
+def get_admin_stats():
+    """Get system statistics for admin dashboard"""
+    try:
+        current_user_email = get_jwt_identity()
+        user = db.session.query(User).filter_by(email=current_user_email).first()
+        
+        if not user or not user.is_admin:
+            return jsonify({'success': False, 'message': 'Unauthorized'}), 403
+        
+        stats = analytics_engine.get_system_statistics()
+        print(f"[ADMIN STATS] Retrieved statistics: {stats}")
+        return jsonify({'success': True, 'stats': stats}), 200
+    except Exception as e:
+        print(f"[ADMIN STATS ERROR] {e}")
+        return jsonify({'success': False, 'message': 'Failed to retrieve statistics'}), 500
+
 
 
 # ==================== UTILITY ROUTES ====================
