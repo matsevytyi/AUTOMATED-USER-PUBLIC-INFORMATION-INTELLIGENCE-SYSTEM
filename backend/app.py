@@ -19,7 +19,7 @@ from backend.wrappers.llm_wrapper import chat
 import ssl
 
 # Import services
-from services import AuthService, ReportService, FacebookAuthService, ProfileService
+from services import AuthService, ReportService, FacebookAuthService, ProfileService, AssistantService
 from backend.services.admin_service import AdminService
 
 
@@ -48,10 +48,13 @@ app = create_app()
 
 # Initialize services
 auth_service = AuthService(db)
-report_service = ReportService(db)
 fb_auth_service = FacebookAuthService(db)
+
 profile_service = ProfileService(db)
 analytics_engine = AdminService(db)
+
+report_service = ReportService(db)
+assistant_service = AssistantService(db)
 
 # ==================== SETTINGS AND ROLE-AUTH DECORATORS ====================
 @app.after_request
@@ -440,26 +443,12 @@ def create_chat_session(report_id):
     current_user_email = get_jwt_identity()
     
     try:
-        # Reuse a single session per user+report
-        existing = ChatSession.query.filter_by(
-            user_email=current_user_email, 
-            report_id=report_id
-        ).first()
+        cs = assistant_service.create_session(current_user_email, report_id, title, save_history)
         
-        if existing:
-            return jsonify({'success': True, 'session': existing.to_dict()}), 200
-
-        cs = ChatSession(
-            user_email=current_user_email, 
-            report_id=report_id, 
-            title=title, 
-            save_history=save_history
-        )
-        db.session.add(cs)
-        db.session.commit()
+        if not cs:
+            return jsonify({'success': False, 'message': 'Failed to create session'}), 500
         return jsonify({'success': True, 'session': cs.to_dict()}), 201
     except Exception as e:
-        db.session.rollback()
         print(f'Failed to create chat session: {e}')
         return jsonify({'success': False, 'message': 'Failed to create session'}), 500
 
@@ -470,10 +459,7 @@ def create_chat_session(report_id):
 def get_session_messages(session_id):
     """Get all messages for a chat session"""
     try:
-        msgs = ChatMessage.query.filter_by(session_id=session_id)\
-            .order_by(ChatMessage.created_at.asc())\
-            .all()
-        out = [m.to_dict() for m in msgs]
+        out = assistant_service.get_session_messages(session_id)
         return jsonify({'success': True, 'messages': out}), 200
     except Exception as e:
         print(f'Failed fetching messages: {e}')
@@ -493,130 +479,19 @@ def post_session_message(session_id):
 
     if not user_msg:
         return jsonify({'success': False, 'message': 'Message is required'}), 400
-
-    session = ChatSession.query.filter_by(id=session_id).first()
-    if not session:
-        return jsonify({'success': False, 'message': 'Session not found'}), 404
     
-    # Build context
-    context = []
     try:
-        if scope == 'datapieces' and datapiece_ids:
-            piece = InformationPiece.query.filter(
-                InformationPiece.id.in_(datapiece_ids)
-            ).first()
-            user_msg += "\n\nContext:\n" + str(piece.to_dict())
-            
-            # Similar pieces for datapiece
-            similar = InformationPiece.query.filter(
-                InformationPiece.report_id.in_(piece.report_id),
-                InformationPiece.category_id == piece.category_id,
-                InformationPiece.id != piece.id
-            ).order_by(InformationPiece.created_at.desc()).limit(5).all()
-            
-            for sp in similar:
-                user_msg += "\n\nSimilar pieces:\n" + str(sp.to_dict())
-        else:
-            # Whole report: include recent pieces for the report
-            context = [
-                str(p.to_dict()) 
-                for p in InformationPiece.query.filter_by(report_id=session.report_id)
-                    .order_by(InformationPiece.created_at.desc())
-                    .limit(40)
-                    .all()
-            ]
-            
-            user_msg += "\n\nContext:\n" + '\n\n'.join(context) if context else ""
-            
-    except Exception as e:
-        print(f'Failed loading datapiece context: {e}')
-
-    # Save user message if history is enabled
-    try:
-        if session.save_history:
-            um = ChatMessage(session_id=session.id, sender='user', content=user_msg)
-            db.session.add(um)
-            db.session.commit()
-    except Exception:
-        db.session.rollback()
-
-    # Prepare messages for LLM
-    if scope == 'datapieces' and datapiece_ids:
-        system_prompt = {
-            'role': 'system',
-            'content': """You respond as a friendly assistant who explains risks and insights based on the provided sources and helps to maintain awareness about digital-footprint security and protecting yourself online. Evaluate information that you see as a whole (but part os smth bigger meaning there may be nore datapieces), its meaning, security implications, and exposure risks. 
-
-                            The report is about the user who asked and contains information that was already found about him.
-
-                            Do not hallucinate.
-                            Draw conclusions from the datapiece (and context) and from similar datapieces (provided under Similar Pieces).
-                            If you do not know, say exactly that.
-                            Do not reveal technical details (such as IDs).
-                            You may give information based on links, context snippets, and titles.
-
-                            When answering:
-                            Make the explanation short and understandable.
-                            Elaborate on whether having this datapiece exposed online (not published intentionally, but visible to others) is dangerous and why.
-                            Clarify privacy or safety issues related to <strong>user-exposed data</strong>.
-                            Provide any other helpful comments.
-                            Tell the user exactly which source link the information came from.
-
-                            Use HTML tags (i.e. <strong>, <italic> or <br>) instead of Markdown.
-                                                """ }
-    else:
-        system_prompt = {
-        'role': 'system',
-        'content': """You respond as a friendly assistant who explains risks and insights based on the entire provided report.
-                        The report may contain multiple datapieces about the user, and your job is to evaluate the document as a whole, its meaning, security implications, and exposure risks.
-                        The report is about the user who asked and contains information that was already found about him.
-
-                        Do not hallucinate.
-                        Base all conclusions strictly on the content of the report and its context.
-                        If something is unclear or missing, state exactly that.
-                        Do not reveal technical identifiers (such as full IDs, tokens, hashes).
-                        You may summarize or refer to information based on links, context snippets, titles, or descriptive fields included in the report.
-
-                        When answering:
-                        Keep explanations short and easy to understand.
-                        Evaluate whether having this entire report exposed online is dangerous, and explain why.
-                        Mention any notable privacy, security, or reputation concerns.
-                        Provide any other relevant commentary that could help the user protect themselves.
-                        Always specify where each insight comes from using the given source links or references.
-
-                        Use HTML tags (e.g., <strong>, <italic>, <br>) instead of Markdown.
-                        """ }
-    
-    messages = [system_prompt, {'role': 'user', 'content': user_msg}]
-
-    # Call LLM abstraction with fallback
-    try:
-        llm_result = chat(
-            provider or 'groq', 
-            messages, 
-            context, 
-            fallback=['openai', 'local']
+        reply, sources = assistant_service.get_answer(
+            user_msg=user_msg, 
+            scope=scope, 
+            datapiece_ids=datapiece_ids,
+            session_id=session_id,
+            provider=provider
         )
-        reply = llm_result.get('reply') if isinstance(llm_result, dict) else str(llm_result)
-        sources = llm_result.get('sources', []) if isinstance(llm_result, dict) else []
     except Exception as e:
-        print(f'LLM call failed: {e}')
-        reply = 'Failed to get response from LLM.'
-        sources = []
-
-    # Save assistant reply if history is enabled
-    try:
-        if session.save_history:
-            am = ChatMessage(
-                session_id=session.id, 
-                sender='assistant', 
-                content=reply, 
-                meta=json.dumps({'sources': sources})
-            )
-            db.session.add(am)
-            db.session.commit()
-    except Exception:
-        db.session.rollback()
-
+        print(f'Failed to get answer: {e}')
+        return jsonify({'success': False, 'message': e}), 500
+    
     return jsonify({'success': True, 'assistant': reply, 'sources': sources}), 200
 
 @app.route('/api/settings/delete-account', methods=['POST'])
