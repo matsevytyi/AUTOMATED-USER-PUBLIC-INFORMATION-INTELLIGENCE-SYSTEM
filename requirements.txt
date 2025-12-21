@@ -11,6 +11,7 @@ langchain_openai==0.3.22
 nltk==3.9.1
 python-dotenv==1.1.0
 python_bcrypt==0.3.2
+reportlab==4.2.5
 Requests==2.32.4
 selenium==4.33.0
 spacy==3.8.2

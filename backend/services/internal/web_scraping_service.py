@@ -3,13 +3,13 @@ from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
 from crawl4ai.content_filter_strategy import PruningContentFilter,BM25ContentFilter
 from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
 
-import regex as re
+import re
 
 from backend.utils.config import Config
 
 class WebScrapingService:
     
-    def __init__(self, min_words_threshold=1):
+    def __init__(self, min_words_threshold=2):
         
         self.browser_config = BrowserConfig(
             headless=True,  
@@ -20,9 +20,9 @@ class WebScrapingService:
         
         self.min_word_threshold = min_words_threshold
         # thresholds for adaptive fallback
-        self.primary_bm25_threshold = Config.BM_25_PRIMARY_THRESHOLD
-        self.fallback_bm25_threshold = Config.BM_25_SECONDARY_THRESHOLD
-        self.enable_pruning_fallback = Config.USE_PRUNING_FILTER_BACKUP
+        self.primary_bm25_threshold = 0.97
+        self.fallback_bm25_threshold = 0.2
+        self.enable_pruning_fallback = True
     
     # ====================== Public API ======================
         
@@ -40,6 +40,17 @@ class WebScrapingService:
         """
         
         raw, fit = self._get_markdown(url, user_query)
+        print("\n\n\n FIT: ", fit)
+        
+        print(type(fit))
+        if fit:
+            print("length", len(fit))
+        if not fit:
+            print("Defaulting to RAW")
+            fit = raw
+        elif len(fit) < 10*self.min_word_threshold:
+            print("Defaulting to RAW")
+            fit = raw
         
         if isinstance(fit, list):
             return [self._answer_to_json(fit_text) if fit_text else None for fit_text in fit]
@@ -132,10 +143,12 @@ class WebScrapingService:
                     result = await crawler.arun(url=url, config=run_config)
                     if result is None or not hasattr(result, 'markdown') or result.markdown is None:
                         last_err = f"No result/markdown for {url} at bm25={th}"
+                        print(last_err)
                         # try next threshold
                         continue
 
                     fit = result.markdown.fit_markdown or ''
+                    print("\n\nFIT INSIDE", fit)
                     if len(fit) >= self.min_word_threshold:
                         if i == 0:
                             # primary succeeded
@@ -144,15 +157,15 @@ class WebScrapingService:
                             print(f"[INFO] Primary BM25 missed; fallback bm25={th} succeeded for {url}")
                             return result.markdown.raw_markdown, fit
                     else:
-                        last_err = f"Not enough words found at bm25={th} (found {len(fit)})"
-                        # continue to next threshold
+                        print(f"Not enough words found at bm25={th} (found {len(fit)})")
                         continue
                 except Exception as e:
-                    last_err = str(e)
+                    print(e)
                     continue
 
             # If BM25 passes didn't return enough, optionally try a pruning/no-filter pass
             if self.enable_pruning_fallback:
+                print("trying pruning fallback")
                 try:
                     print(f"[INFO] BM25 fallbacks failed for {url}; trying PruningContentFilter")
                     run_config = CrawlerRunConfig(

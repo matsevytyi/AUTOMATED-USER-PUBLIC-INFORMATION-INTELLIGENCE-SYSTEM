@@ -97,12 +97,13 @@ class InformationPiece(db.Model):
     
     # Relationships
     category = db.relationship('InformationCategory', backref='information_pieces', lazy='selectin')
+    obtained_from = db.relationship('DiscoverSource', backref='information_pieces', lazy='selectin')
     
     def to_dict(self):
         return {
             'id': self.id,
             'report_id': self.report_id,
-            'source': self.source,
+            'source': self.obtained_from.name,
             'category': self.category.name if self.category else "Uncategorized",
             'info': self.content[:200] or self.snippet,  # for frontend
             'risk': self.risk_level,
