@@ -48,12 +48,21 @@ class AuthService:
             confirmed=False
         )
         
+        user = new_user
+        
         self.db.session.add(new_user)
         self.db.session.commit()
         
+        access_token = create_access_token(identity=email)
+        
         return {
             'success': True,
-            'message': 'Registration successful. Please check your email for confirmation instructions.'
+            'message': 'Registration successful.',
+            'access_token': access_token,
+            'user': {
+                'email': user.email,
+                'name': user.name
+            }
         }
     
     def login_user(self, email, password):

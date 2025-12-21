@@ -350,7 +350,12 @@ async function registerUser(formData) {
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(formData)
     });
-    return await response.json();
+    const data = await response.json();
+    if (data.success) {
+        AppState.currentUser = data.user;
+        AppState.jwt = data.access_token;
+    }
+    return data;
 }
 
 async function loginUser(formData) {
@@ -435,7 +440,7 @@ function validateEmail(email) {
 
 function validatePassword(password) {
     // At least 8 characters, one uppercase, one lowercase, one number, one special character
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&.])[A-Za-z\d@$!%*?&.]{8,}$/;
     return passwordRegex.test(password);
 }
 
@@ -862,10 +867,25 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const response = await registerUser(formData);
             if (response.success) {
-                AppState.pendingUser = { email: formData.email };
                 setButtonLoading(submitBtn, false);
                 showNotification(response.message, 'success');
-                showPage('confirm');
+                try {
+                    const profileRes = await fetchProfile();
+                    if (profileRes && profileRes.success && profileRes.profile) {
+                        AppState.currentUser = Object.assign(AppState.currentUser || {}, profileRes.profile);
+                        // choose theme: server preference > per-user localStorage > guest localStorage > device
+                        const serverTheme = profileRes.profile.theme;
+                        const localUserTheme = localStorage.getItem('theme:' + profileRes.profile.email);
+                        // Preference order: server-saved > per-user local > device default
+                        const chosen = serverTheme || localUserTheme || 'device';
+                        applyTheme(chosen);
+                    }
+                } catch (e) {
+                }
+                showPage('dashboard');
+                await reloadSearchHistory();
+                // update FB cookies status for logged-in user
+                getFacebookCookiesStatus();
                 // Clear register fields
                 document.getElementById('register-email').value = '';
                 document.getElementById('register-password').value = '';
