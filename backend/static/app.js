@@ -376,14 +376,14 @@ async function confirmEmail(email) {
     return await response.json();
 }
 
-async function searchReport(query) {
+async function searchReport(query, generalSearch, facebookSearch) {
     const response = await fetch('/api/search', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer ' + AppState.jwt
         },
-        body: JSON.stringify({ query })
+        body: JSON.stringify({ query, general_search: generalSearch, facebook_search: facebookSearch })
     });
     return response.json();
 }
@@ -1009,13 +1009,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
+            const generalSearch = document.getElementById('general-search').checked;
+            const facebookSearch = document.getElementById('facebook-search').checked;
+            
+            if (!generalSearch && !facebookSearch) {
+                showNotification('Please select at least one search option', 'error');
+                return;
+            }
+            
             const submitBtn = document.getElementById('search-submit-btn');
             setButtonLoading(submitBtn, true);
             showLoading();
 
             try {
 
-                const response = await searchReport(query);
+                const response = await searchReport(query, generalSearch, facebookSearch);
 
                 if (response.success) {
                     AppState.searchHistory.unshift(response.report);

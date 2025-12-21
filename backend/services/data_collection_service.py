@@ -19,7 +19,7 @@ class DataCollectionService:
         self._lock = threading.Lock()
          
          
-    def collect_data(self, search_request, use_general=True, use_facebook=True, fb_cookies=None):
+    def collect_data(self, search_request, fb_cookies=None, use_general=True, use_facebook=True):
         
         results = Queue() 
         threads = []

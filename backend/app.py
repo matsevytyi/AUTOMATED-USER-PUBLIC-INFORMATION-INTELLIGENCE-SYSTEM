@@ -123,12 +123,14 @@ def search():
         current_user_email = get_jwt_identity()
         data = request.json
         query = data.get('query', '').strip()
+        is_general_search = data.get('general_search', True)
+        is_facebook_search = data.get('facebook_search', False)
         
         # Get Facebook cookies if available
         fb_cookies = fb_auth_service.get_cookies(current_user_email)
         
         # Create report using service
-        report = report_service.create_report(current_user_email, query, fb_cookies)
+        report = report_service.create_report(current_user_email, query, fb_cookies, use_facebook=is_facebook_search, use_general=is_general_search)
         return jsonify({'success': True, 'report': report}), 200
         
     except ValueError as e:
