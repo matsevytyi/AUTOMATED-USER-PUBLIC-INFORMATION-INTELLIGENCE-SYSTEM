@@ -93,6 +93,10 @@ class DataProcessingEngine:
                     continue
                 if method == 'NER':
                     # Check for substrings (Harlequin Defense vs Harlequin DefenseWe)
+                    
+                    if self._validate_entity_specificity(final_text, cat_type):
+                        continue
+                    
                     found_fuzzy = False
                     for key, existing_piece in local_cache.items():
                         existing_cat = key.split(':')[0]
@@ -112,9 +116,6 @@ class DataProcessingEngine:
                                 break
                             
                     if found_fuzzy:
-                        continue
-                    
-                    if self._validate_entity_specificity(final_text, cat_type):
                         continue
 
                 # 6. Vector Embedding
@@ -227,7 +228,7 @@ class DataProcessingEngine:
 
         # 5. Social media (usernames or links)
         social = re.findall(r' @\S+', text)
-        candidates.extend([{'word': item, 'category': 'Social Connections', 'method': 'REGEX'} for item in social])
+        candidates.extend([{'word': item, 'category': 'Contact Information', 'method': 'REGEX'} for item in social])
         
         # 6. Professional titles (simple keyword match)
         professions = ['CEO', 'founder', 'developer', 'manager', 'engineer', 'analyst', 'specialist', 'student']
@@ -320,15 +321,30 @@ class DataProcessingEngine:
         """
         # Define pairs: (Positive/Specific Ref, Negative/General Ref)
         refs = {
-            'Social Connections': ('A specific full name of a person', 'Someone'),
-            'Professional Details': ('A legally registered company name', 'Company'),
-            'Location Data': ('A specific city or street address', 'Somewhere'),
-            'Contact Information': ('A valid email address or phone number', 'Contact'),
-            'Financial Information': ('A specific bank account number', 'Bank')
+            'Social Connections': (
+                'A specific personal name, username, or social media handle', 
+                'A generic reference to a person or people'
+            ),
+            'Professional Details': (
+                'A specific organization name, company, or institution', 
+                'A general business concept or job title'
+            ),
+            'Location Data': (
+                'A specific geographic location, city, or address', 
+                'A general direction or spatial concept'
+            ),
+            'Contact Information': (
+                'A specific email, phone number, or digital contact', 
+                'The general concept of communication'
+            ),
+            'Financial Information': (
+                'A specific price, account number, or currency value', 
+                'The general concept of money'
+            )
         }
         
         # Default to a neutral check if category is unknown
-        pos_ref, neg_ref = refs.get(category, ('Specific entity', 'General concept'))
+        pos_ref, neg_ref = refs.get(category, ('A specific named entity', 'A general category or noise'))
 
         # Encode all inputs
         emb_text = self.semantic_model.encode(text, convert_to_tensor=True)
@@ -338,11 +354,6 @@ class DataProcessingEngine:
         # Calculate distances
         similarity_to_specific = float(util.cos_sim(emb_text, emb_pos).item())
         similarity_to_general = float(util.cos_sim(emb_text, emb_neg).item())
-        
-        print("""
-        Similarity to specific: {similarity_to_specific}
-        Similarity to general: {similarity_to_general}
-        """.format(similarity_to_specific=similarity_to_specific, similarity_to_general=similarity_to_general))
 
         
         # Penalty: subtract similarity to general term
@@ -409,12 +420,6 @@ class DataProcessingEngine:
 
         score_exclusion = max(exclusion_scores)
         score_noise = float(util.cos_sim(emb_snippet, emb_noise).item())
-        
-        print("content", content)
-        print("snippet", snippet)
-        print("score_attribution", score_attribution)
-        print("score_exclusion", score_exclusion)
-        print("score_noise", score_noise)
 
         # 4. Weighted Scoring Logic
         if score_attribution > score_exclusion: 
