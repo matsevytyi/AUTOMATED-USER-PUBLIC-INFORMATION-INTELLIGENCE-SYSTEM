@@ -184,6 +184,19 @@ class AdminService:
 
         return sorted(requests, key=lambda x: x['timestamp'], reverse=True)
 
+    def get_suspended_users(self):
+        suspended_users = self.db.session.query(User).filter(User.is_deactivated == True).all()
+        suspended_list = [{
+            'user_id': user.id,
+            'email': user.email,
+            'name': user.name,
+            'created_at': user.created_at.isoformat(),
+            'suspended_at': user.deactivation_reason
+        } for user in suspended_users]
+        
+        print(f"[ADMIN SUSPENDED] Found {len(suspended_list)} suspended users")
+        return suspended_list
+
     def suspend_user(self, user_id, reason):
         """Suspend a user account"""
         user = self.db.session.query(User).filter(User.id == user_id).first()

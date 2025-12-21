@@ -673,6 +673,7 @@ function initializeAdminDashboard() {
         }
         loadAdminStats();
         loadPotentialMisusers();
+        loadSuspendedUsers();
     }
 }
 
@@ -1720,6 +1721,79 @@ async function reactivateUser(userId) {
         }
     } catch (e) {
         console.error('Reactivate user error:', e);
+        showNotification('Failed to reactivate user', 'error');
+    }
+}
+
+async function loadSuspendedUsers() {
+    console.log('[DEBUG] Loading suspended users...');
+    try {
+        const response = await fetch('/api/admin/suspended', {
+            headers: { 'Authorization': 'Bearer ' + AppState.jwt }
+        });
+        const data = await response.json();
+        if (data.success) {
+            displaySuspendedUsers(data.suspended_users);
+        } else {
+            showNotification(data.message || 'Failed to load suspended users', 'error');
+        }
+    } catch (e) {
+        console.error('Load suspended users error:', e);
+        showNotification('Failed to load suspended users', 'error');
+    }
+}
+
+function displaySuspendedUsers(suspendedUsers) {
+    const container = document.getElementById('suspended-list');
+    if (suspendedUsers.length === 0) {
+        container.innerHTML = '<p class="empty-state">No suspended users</p>';
+        return;
+    }
+
+    const html = suspendedUsers.map(user => `
+        <div class="suspended-user-item card" data-user-id="${user.user_id}">
+            <div class="card__body">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h4>${user.name || 'Unknown'}</h4>
+                        <p class="small-text">${user.email}</p>
+                        <p class="small-text">Suspended: ${new Date(user.suspended_at).toLocaleDateString()}</p>
+                        <p class="small-text">Created: ${new Date(user.created_at).toLocaleDateString()}</p>
+                    </div>
+                    <button class="btn btn--success reactivate-user-btn" data-user-id="${user.user_id}">Reactivate</button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+    container.innerHTML = html;
+
+    // Add event listeners
+    document.querySelectorAll('.reactivate-user-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const userId = e.target.dataset.userId;
+            reactivateSuspendedUser(userId);
+        });
+    });
+}
+
+async function reactivateSuspendedUser(userId) {
+    try {
+        const response = await fetch(`/api/admin/user/${userId}/reactivate`, {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + AppState.jwt
+            },
+            body: JSON.stringify({})
+        });
+        const data = await response.json();
+        if (data.success) {
+            showNotification('User reactivated successfully', 'success');
+            loadSuspendedUsers(); // Refresh list
+        } else {
+            showNotification(data.message || 'Failed to reactivate user', 'error');
+        }
+    } catch (e) {
+        console.error('Reactivate suspended user error:', e);
         showNotification('Failed to reactivate user', 'error');
     }
 }

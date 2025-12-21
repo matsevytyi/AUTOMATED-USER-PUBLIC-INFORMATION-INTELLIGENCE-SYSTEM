@@ -650,6 +650,22 @@ def get_potential_misusers():
         return jsonify({'success': False, 'message': 'Failed to retrieve misusers'}), 500
 
 
+@app.route('/api/admin/suspended', methods=['GET'])
+@jwt_required()
+@admin_required
+def get_suspended_users():
+    """Get suspended users for admin review"""
+    try:
+        
+        suspended_users = analytics_engine.get_suspended_users()
+        
+        print(f"[ADMIN SUSPENDED] Found {len(suspended_users)} suspended users")
+        return jsonify({'success': True, 'suspended_users': suspended_users}), 200
+    except Exception as e:
+        print(f"[ADMIN SUSPENDED ERROR] {e}")
+        return jsonify({'success': False, 'message': 'Failed to retrieve suspended users'}), 500
+
+
 @app.route('/api/admin/user/<int:user_id>/requests', methods=['GET'])
 @jwt_required()
 @admin_required
