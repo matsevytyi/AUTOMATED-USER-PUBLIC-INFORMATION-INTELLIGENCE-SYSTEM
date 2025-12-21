@@ -17,6 +17,9 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     average_misuse_score = db.Column(db.Float, nullable=True)
     
+    is_admin = db.Column(db.Boolean, default=False)
+    is_deactivated = db.Column(db.Boolean, default=False)
+    
     # Relationships
     reports = db.relationship('Report', backref='user', lazy=True)
     searches = db.relationship('SearchHistory', backref='user', lazy=True, order_by='desc(SearchHistory.created_at)')

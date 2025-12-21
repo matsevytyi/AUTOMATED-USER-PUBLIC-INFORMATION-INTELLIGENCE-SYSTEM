@@ -93,18 +93,26 @@ class AuthService:
         if not user.confirmed:
             raise ValueError('Please confirm your email before logging in.')
         
+        if user.is_deactivated:
+            raise ValueError('Your account has been deactivated.')
+        
         # Create access token
         access_token = create_access_token(identity=email)
         
-        return {
+        payload = {
             'success': True,
             'message': 'Login successful.',
             'access_token': access_token,
             'user': {
                 'email': user.email,
-                'name': user.name
+                'name': user.name,
+                'is_admin': user.is_admin
             }
         }
+        
+        print("returning", payload)
+        
+        return payload
     
     def confirm_email(self, email):
         """
