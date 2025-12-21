@@ -3,6 +3,9 @@ from backend.services.data_collection_service import DataCollectionService
 
 from backend.engines.risk_assessment_engine import RiskAssessmentEngine
 from backend.engines.data_processing_engine import data_processing_engine
+import math
+
+
 
 from typing import List
 
@@ -13,7 +16,7 @@ class ReportService:
     def __init__(self, db):
         self.db = db
         self.data_collection = DataCollectionService()
-        self.risk_engine = RiskAssessmentEngine(db.session)
+        self.risk_engine = RiskAssessmentEngine(db)
 
     def create_report(self, user_email, query, fb_cookies=None, use_facebook=False, use_general=True):
         user = self.db.session.query(User).filter_by(email=user_email).first()
@@ -33,7 +36,8 @@ class ReportService:
         )
         
         # 3. Risk Assessment (New Engine)
-        self.risk_engine.process_risk_assessment(info_pieces)
+        processed, risk_values = self.risk_engine.process_risk_assessment(info_pieces, query)
+        
         self.db.session.commit()
 
         # 4. Generate Report
@@ -148,8 +152,18 @@ class ReportService:
                 
         print("risk_counts: ", risk_counts)
         print("source_distribution: ", source_distribution)
-    
-        avg_risk = sum(risk_vals) / len(risk_vals) if risk_vals else 0.0
+
+        if risk_vals:
+            sorted_vals = sorted(risk_vals, reverse=True)
+            
+            # how many items make up the top 20% (minimum 1)
+            top_count = max(1, math.ceil(len(sorted_vals) * 0.20))
+            
+            top_slice = sorted_vals[:top_count]
+            avg_risk = sum(top_slice) / len(top_slice)
+            
+        else:
+            avg_risk = 0.0
         
         # 2. Summary & Recommendations
         executive_summary = self._generate_executive_summary(
