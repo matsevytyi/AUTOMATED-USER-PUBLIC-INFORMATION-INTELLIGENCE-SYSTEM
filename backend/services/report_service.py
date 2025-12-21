@@ -92,7 +92,7 @@ class ReportService:
         if not user:
             raise ValueError('User not found.')
         
-        report = Report.query.filter_by(report_id=report_id, user_id=user.id).first()
+        report = self.db.session.query(Report).filter_by(report_id=report_id, user_id=user.id).first()
         if not report:
             raise ValueError('Report not found.')
         
@@ -112,14 +112,15 @@ class ReportService:
             ValueError: If user not found
         """
         user = self.db.session.query(User).filter_by(email=user_email).first()
+        
         if not user:
             raise ValueError('User not found.')
         
-        searches = SearchHistory.query.filter_by(user_id=user.id)\
-            .order_by(SearchHistory.created_at.desc())\
-            .all()
+        searches = user.searches or []
         
-        return [search.to_dict() for search in searches]
+        searches = [search.to_dict() for search in searches]
+        
+        return searches
     
     # HELPER FUNCTIONS
     
@@ -136,8 +137,18 @@ class ReportService:
             generated_at=datetime.utcnow()
         )
         
+        new_history_entry = SearchHistory(
+            user_id=user_id,
+            user_query=query,
+            report_id=report_id
+        )
+        
+        # add local misusse calculation
+        
+        
         print("adding report to self.db with id ", report_id)
         self.db.session.add(report)
+        self.db.session.add(new_history_entry)
         self.db.session.commit()
         
         return report_id

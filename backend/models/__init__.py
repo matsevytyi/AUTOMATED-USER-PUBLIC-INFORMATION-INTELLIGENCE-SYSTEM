@@ -19,7 +19,7 @@ class User(db.Model):
     
     # Relationships
     reports = db.relationship('Report', backref='user', lazy=True)
-    searches = db.relationship('SearchHistory', backref='user', lazy=True)
+    searches = db.relationship('SearchHistory', backref='user', lazy=True, order_by='desc(SearchHistory.created_at)')
 
 class Report(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -38,17 +38,25 @@ class Report(db.Model):
     recommendations = db.Column(EncryptedString)  # JSON string
     source_distribution = db.Column(EncryptedString)  # JSON string
     
+    # Relationships
+    information_pieces = db.relationship('InformationPiece', backref='report', lazy='selectin', primaryjoin="Report.report_id == InformationPiece.report_id")
+    
     def to_dict(self):
+
+        detailed_findings = [d.to_dict() for d in self.information_pieces]
+        
         return {
             'report_id': self.report_id,
             'query': self.user_query,
-            'status': self.status,
             'generated_at': self.generated_at.isoformat() + 'Z',
+            'status': self.status,
+            'overall_risk_score': round(self.overall_risk_score, 2),
             'executive_summary': self.executive_summary,
-            'risk_distribution': json.loads(self.risk_distribution) if self.risk_distribution else {},
-            'detailed_findings': json.loads(self.detailed_findings) if self.detailed_findings else [],
-            'recommendations': json.loads(self.recommendations) if self.recommendations else [],
-            'source_distribution': json.loads(self.source_distribution) if self.source_distribution else {}
+            'risk_distribution': json.loads(self.risk_distribution) if self.risk_distribution and self.risk_distribution != "null" else {},
+            'detailed_findings': detailed_findings,
+            'recommendations': json.loads(self.recommendations) if self.recommendations and self.recommendations != "null" else [],
+            'source_distribution': json.loads(self.source_distribution) if self.source_distribution and self.source_distribution != "null" else {},
+            'total_findings': len(self.information_pieces)
         }
 
 class SearchHistory(db.Model):
@@ -78,6 +86,8 @@ class InformationPiece(db.Model):
     content = db.Column(EncryptedString, nullable=False)
     
     relevance_score = db.Column(db.Float, nullable=True) # because is added later
+    risk_score = db.Column(db.Float, nullable=True)
+    risk_level = db.Column(db.String(10), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Short chat context and human-friendly title
@@ -85,17 +95,24 @@ class InformationPiece(db.Model):
     
     repetition_count = db.Column(db.Integer, default=1)
     
+    # Relationships
+    category = db.relationship('InformationCategory', backref='information_pieces', lazy='selectin')
+    
     def to_dict(self):
         return {
             'id': self.id,
             'report_id': self.report_id,
-            'category_id': self.category_id,
-            'source_id': self.source_id,
             'source': self.source,
+            'category': self.category.name if self.category else "Uncategorized",
+            'info': self.content[:200] or self.snippet,  # for frontend
+            'risk': self.risk_level,
+            'timestamp': self.created_at.isoformat() + 'Z',
+            'url': self.source if self.source.startswith('http') else 'N/A',  # assuming source is url for web
+            'relevance_score': self.relevance_score,
+            
             'content': self.content,
             'snippet': self.snippet,
-            'relevance_score': self.relevance_score,
-            'created_at': self.created_at.isoformat() + 'Z'
+            'risk_score': self.risk_score
         }
 
 class InformationCategory(db.Model):
@@ -127,7 +144,7 @@ class DiscoverSource(db.Model):
 class FacebookCookies(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_email = db.Column(db.Integer, db.ForeignKey('user.email'), nullable=False, unique=True)
-    cookies_json = db.Column(db.Text, nullable=False)
+    cookies_json = db.Column(EncryptedString, nullable=False) # EncryptedString
     saved_at = db.Column(db.DateTime, default=datetime.utcnow)
     expires_at = db.Column(db.DateTime, nullable=True)
 
@@ -157,8 +174,8 @@ class ChatMessage(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     session_id = db.Column(db.Integer, db.ForeignKey('chat_session.id'), nullable=False)
     sender = db.Column(db.String(20), nullable=False)  # 'user' | 'assistant' | 'system'
-    content = db.Column(db.Text, nullable=False)
-    meta = db.Column(db.Text, nullable=True)  # JSON string for optional metadata (sources, provider info)
+    content = db.Column(EncryptedString, nullable=False)
+    meta = db.Column(EncryptedString, nullable=True)  # JSON string for optional metadata (sources, provider info)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def to_dict(self):
