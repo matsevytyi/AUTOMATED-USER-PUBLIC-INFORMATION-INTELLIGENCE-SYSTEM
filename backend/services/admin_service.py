@@ -2,9 +2,6 @@ from models import db, User, Report, SearchHistory, ChatSession
 from sqlalchemy import func, text, case
 from datetime import datetime, timedelta
 import math
-import re
-from collections import defaultdict
-import Levenshtein
 from backend.utils.config import Config
 
 class AdminService:
@@ -113,5 +110,39 @@ class AdminService:
 
         print(f"[ANALYTICS] Calculated statistics: {stats}")
         return stats
-
     
+    def detect_potential_misusers(self):
+        """Detect potential system misusers"""
+        misusers = []
+
+        # outerjoin so don't skip users with 0 reports
+        
+        results = self.db.session.query(
+            User,
+            func.count(Report.id).label('total_reports')
+        ).outerjoin(
+            Report, User.id == Report.user_id
+        ).filter(
+            User.is_admin == False,
+            User.is_deactivated == False
+        ).group_by(
+            User.id
+        ).order_by(
+            User.average_misuse_score.desc()
+        ).all()
+
+        for user, total_reports in results:
+            score = user.average_misuse_score or 0.0
+            
+            if score > 0.1:
+                misusers.append({
+                    'user_id': user.id,
+                    'email': user.email,
+                    'name': user.name or user.email.split('@')[0],
+                    'misuse_score': round(score, 3),
+                    'recent_searches_count': total_reports or 0,
+                    'joined_at': user.created_at.isoformat() if user.created_at else None
+                })
+
+        print(f"[MISUSE DETECTION] Found {len(misusers)} potential misusers")
+        return misusers

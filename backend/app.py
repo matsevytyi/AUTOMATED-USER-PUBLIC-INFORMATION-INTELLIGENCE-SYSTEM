@@ -61,7 +61,7 @@ def add_no_cache_headers(response):
     response.headers["Expires"] = "0"
     return response
 
-def admin_only(f):
+def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         current_user_email = get_jwt_identity()
@@ -621,7 +621,7 @@ def delete_account():
 
 @app.route('/api/admin/stats', methods=['GET'])
 @jwt_required()
-@admin_only
+@admin_required
 def get_admin_stats():
     """Get system statistics for admin dashboard"""
     try:
@@ -635,6 +635,20 @@ def get_admin_stats():
         return jsonify({'success': False, 'message': 'Failed to retrieve statistics'}), 500
 
 
+@app.route('/api/admin/misusers', methods=['GET'])
+@jwt_required()
+@admin_required
+def get_potential_misusers():
+    """Get potential misusers for admin review"""
+    try:
+        
+        misusers = analytics_engine.detect_potential_misusers()
+        print(f"[ADMIN MISUSERS] Found {len(misusers)} potential misusers")
+        return jsonify({'success': True, 'misusers': misusers}), 200
+    except Exception as e:
+        print(f"[ADMIN MISUSERS ERROR] {e}")
+        return jsonify({'success': False, 'message': 'Failed to retrieve misusers'}), 500
+
 
 # ==================== UTILITY ROUTES ====================
 
@@ -643,11 +657,21 @@ def health_check():
     """Health check endpoint"""
     return jsonify({'status': 'healthy', 'timestamp': datetime.utcnow().isoformat() + 'Z'})
 
-
 @app.route('/')
 def home():
     """Serve frontend"""
     return render_template('index.html')
+
+
+@app.route('/api/admin/make_admin/<email>', methods=['POST'])
+def make_admin(email):
+    """Temporary route to make a user admin for testing"""
+    user = User.query.filter_by(email=email).first()
+    if user:
+        user.is_admin = True
+        db.session.commit()
+        return jsonify({'success': True, 'message': f'User {email} is now admin'})
+    return jsonify({'success': False, 'message': 'User not found'}), 404
 
 
 if __name__ == "__main__":

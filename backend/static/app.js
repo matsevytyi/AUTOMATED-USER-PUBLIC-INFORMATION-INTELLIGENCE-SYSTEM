@@ -672,6 +672,7 @@ function initializeAdminDashboard() {
             userNameEl.textContent = AppState.currentUser.name;
         }
         loadAdminStats();
+        loadPotentialMisusers();
     }
 }
 
@@ -1525,3 +1526,55 @@ async function loadAdminStats() {
     }
 }
 
+function displayAdminStats(stats) {
+    console.log('[DEBUG] Displaying admin stats:', stats);
+    document.getElementById('active-users').textContent = stats.active_users || 0;
+    document.getElementById('active-sessions').textContent = stats.active_sessions || 0;
+    document.getElementById('acquisition-velocity').textContent = stats.acquisition_velocity ? stats.acquisition_velocity.toFixed(2) : 0;
+    document.getElementById('weekly-reports').textContent = stats.weekly_reports || 0;
+    document.getElementById('weekly-chats').textContent = stats.weekly_chats || 0;
+    document.getElementById('apdex-score').textContent = stats.apdex_score ? stats.apdex_score.toFixed(3) : 0;
+    document.getElementById('misuse-index').textContent = stats.misuse_index ? stats.misuse_index.toFixed(3) : 0;
+}
+
+async function loadPotentialMisusers() {
+    try {
+        const response = await fetch('/api/admin/misusers', {
+            headers: { 'Authorization': 'Bearer ' + AppState.jwt }
+        });
+        const data = await response.json();
+        if (data.success) {
+            displayMisusers(data.misusers);
+        } else {
+            showNotification(data.message || 'Failed to load misusers', 'error');
+        }
+    } catch (e) {
+        console.error('Load misusers error:', e);
+        showNotification('Failed to load misusers', 'error');
+    }
+}
+
+function displayMisusers(misusers) {
+    const container = document.getElementById('misusers-list');
+    if (misusers.length === 0) {
+        container.innerHTML = '<p class="empty-state">No potential misusers detected</p>';
+        return;
+    }
+
+    const html = misusers.map(misuser => `
+        <div class="misuser-item card" data-user-id="${misuser.user_id}">
+            <div class="card__body">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h4>${misuser.name || 'Unknown'}</h4>
+                        <p class="small-text">${misuser.email}</p>
+                        <p class="small-text">Misuse Score: ${misuser.misuse_score.toFixed(3)}</p>
+                        <p class="small-text">Recent Searches: ${misuser.recent_searches_count}</p>
+                    </div>
+                    <button class="btn btn--outline view-misuser-btn" data-user-id="${misuser.user_id}">View Details</button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+    container.innerHTML = html;
+}
