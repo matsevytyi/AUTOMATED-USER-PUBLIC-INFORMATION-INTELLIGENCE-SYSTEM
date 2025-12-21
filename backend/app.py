@@ -3,6 +3,8 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__))))
 
+from functools import wraps
+
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, jwt_required, get_jwt_identity
@@ -58,6 +60,23 @@ def add_no_cache_headers(response):
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
     return response
+
+def admin_only(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        current_user_email = get_jwt_identity()
+        
+        # Verify user exists and has admin flag
+        user = db.session.query(User).filter_by(email=current_user_email).first()
+        
+        if not user or not getattr(user, 'is_admin', False):
+            return jsonify({
+                'success': False, 
+                'message': 'Access denied. Admin privileges required.'
+            }), 403
+            
+        return f(*args, **kwargs)
+    return decorated_function
 
 
 # ==================== AUTH ROUTES ====================
@@ -602,18 +621,15 @@ def delete_account():
 
 @app.route('/api/admin/stats', methods=['GET'])
 @jwt_required()
+@admin_only
 def get_admin_stats():
     """Get system statistics for admin dashboard"""
     try:
-        current_user_email = get_jwt_identity()
-        user = db.session.query(User).filter_by(email=current_user_email).first()
-        
-        if not user or not user.is_admin:
-            return jsonify({'success': False, 'message': 'Unauthorized'}), 403
         
         stats = analytics_engine.get_system_statistics()
         print(f"[ADMIN STATS] Retrieved statistics: {stats}")
         return jsonify({'success': True, 'stats': stats}), 200
+    
     except Exception as e:
         print(f"[ADMIN STATS ERROR] {e}")
         return jsonify({'success': False, 'message': 'Failed to retrieve statistics'}), 500
