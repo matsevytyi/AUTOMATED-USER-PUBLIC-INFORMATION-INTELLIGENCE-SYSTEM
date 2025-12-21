@@ -730,6 +730,17 @@ def health_check():
     """Health check endpoint"""
     return jsonify({'status': 'healthy', 'timestamp': datetime.utcnow().isoformat() + 'Z'})
 
+@app.route('/api/admin/make_admin/<email>', methods=['POST'])
+def make_admin(email):
+    """Temporary route to make a user admin for testing"""
+    user = User.query.filter_by(email=email).first()
+    if user:
+        user.is_admin = True
+        db.session.commit()
+        return jsonify({'success': True, 'message': f'User {email} is now admin'})
+    return jsonify({'success': False, 'message': 'User not found'}), 404
+
+
 @app.route('/')
 def home():
     """Serve frontend"""

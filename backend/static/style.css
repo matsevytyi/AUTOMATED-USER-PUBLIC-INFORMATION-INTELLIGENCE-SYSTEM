@@ -1151,6 +1151,35 @@ select.form-control {
   background: var(--color-text-muted);
 }
 
+/* Misusers and Suspended Users Lists */
+#misusers-list,
+#suspended-list {
+  height: 250px;
+  overflow-y: auto;
+}
+
+#misusers-list::-webkit-scrollbar,
+#suspended-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+#misusers-list::-webkit-scrollbar-track,
+#suspended-list::-webkit-scrollbar-track {
+  background: var(--color-surface);
+  border-radius: 4px;
+}
+
+#misusers-list::-webkit-scrollbar-thumb,
+#suspended-list::-webkit-scrollbar-thumb {
+  background: var(--color-muted);
+  border-radius: 4px;
+}
+
+#misusers-list::-webkit-scrollbar-thumb:hover,
+#suspended-list::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
+
 /* Report Display */
 .report-card {
   margin-top: var(--space-32);
