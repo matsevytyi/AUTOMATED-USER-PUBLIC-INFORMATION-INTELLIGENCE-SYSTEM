@@ -40,16 +40,9 @@ class WebScrapingService:
         """
         
         raw, fit = self._get_markdown(url, user_query)
-        print("\n\n\n FIT: ", fit)
-        
-        print(type(fit))
-        if fit:
-            print("length", len(fit))
         if not fit:
-            print("Defaulting to RAW")
             fit = raw
         elif len(fit) < 10*self.min_word_threshold:
-            print("Defaulting to RAW")
             fit = raw
         
         if isinstance(fit, list):
@@ -148,7 +141,7 @@ class WebScrapingService:
                         continue
 
                     fit = result.markdown.fit_markdown or ''
-                    print("\n\nFIT INSIDE", fit)
+                    
                     if len(fit) >= self.min_word_threshold:
                         if i == 0:
                             # primary succeeded

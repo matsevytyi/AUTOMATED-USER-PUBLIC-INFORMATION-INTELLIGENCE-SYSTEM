@@ -275,7 +275,7 @@ class FacebookScrapingService:
                 
                 new_height = self.scraper.execute_script("return document.body.scrollHeight")
                 
-                if new_height == last_height and consecutive_scroll_fails >= 3:
+                if new_height == last_height and consecutive_scroll_fails >=2:
                     print("Reached end of feed or blocked.")
                     break
             else:
