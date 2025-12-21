@@ -146,3 +146,59 @@ class AdminService:
 
         print(f"[MISUSE DETECTION] Found {len(misusers)} potential misusers")
         return misusers
+
+
+    def get_user_recent_requests(self, user_id):
+        """Get recent requests for a user (without full reports)"""
+        thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+
+        # Get recent searches
+        searches = self.db.session.query(SearchHistory).filter(
+            SearchHistory.user_id == user_id,
+            SearchHistory.created_at >= thirty_days_ago
+        ).order_by(SearchHistory.created_at.desc()).limit(10).all()
+
+        requests = []
+        for search in searches:
+            requests.append({
+                'type': 'search',
+                'query': search.user_query,
+                'timestamp': search.created_at.isoformat(),
+                'status': 'completed'
+            })
+
+        # Get recent reports (just metadata)
+        reports = self.db.session.query(Report).filter(
+            Report.user_id == user_id,
+            Report.generated_at >= thirty_days_ago
+        ).order_by(Report.generated_at.desc()).limit(10).all()
+
+        for report in reports:
+            requests.append({
+                'type': 'report',
+                'query': report.user_query,
+                'timestamp': report.generated_at.isoformat(),
+                'status': report.status,
+                'report_id': report.report_id
+            })
+
+        return sorted(requests, key=lambda x: x['timestamp'], reverse=True)
+
+    def suspend_user(self, user_id, reason):
+        """Suspend a user account"""
+        user = self.db.session.query(User).filter(User.id == user_id).first()
+        if user:
+            user.is_deactivated = True
+            user.deactivation_reason = reason
+            self.db.session.commit()
+            return True
+        return False
+
+    def reactivate_user(self, user_id):
+        """Reactivate a suspended user"""
+        user = self.db.session.query(User).filter(User.id == user_id).first()
+        if user:
+            user.is_deactivated = False
+            self.db.session.commit()
+            return True
+        return False

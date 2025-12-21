@@ -19,6 +19,7 @@ class User(db.Model):
     
     is_admin = db.Column(db.Boolean, default=False)
     is_deactivated = db.Column(db.Boolean, default=False)
+    deactivated_reason = db.Column(db.Text, nullable=True)
     
     # Relationships
     reports = db.relationship('Report', backref='user', lazy=True)
