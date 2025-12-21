@@ -1367,6 +1367,53 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
+
+    // Admin dashboard listeners
+    const adminLogoutBtn = document.getElementById('admin-logout-btn');
+    if (adminLogoutBtn) adminLogoutBtn.addEventListener('click', logout);
+
+    const misuserModalClose = document.getElementById('misuser-modal-close');
+    if (misuserModalClose) misuserModalClose.addEventListener('click', () => {
+        document.getElementById('misuser-modal').classList.add('hidden');
+    });
+
+    const suspendModalClose = document.getElementById('suspend-modal-close');
+    if (suspendModalClose) suspendModalClose.addEventListener('click', () => {
+        document.getElementById('suspend-modal').classList.add('hidden');
+    });
+
+    const suspendUserBtn = document.getElementById('suspend-user-btn');
+    if (suspendUserBtn) suspendUserBtn.addEventListener('click', () => {
+        document.getElementById('suspend-modal').classList.remove('hidden');
+    });
+
+    const confirmSuspendBtn = document.getElementById('confirm-suspend-btn');
+    if (confirmSuspendBtn) confirmSuspendBtn.addEventListener('click', async () => {
+        const userId = document.getElementById('misuser-modal').dataset.userId;
+        const reason = document.getElementById('suspend-reason').value.trim();
+        if (!reason) {
+            showNotification('Please provide a reason for suspension', 'error');
+            return;
+        }
+        await suspendUser(userId, reason);
+        document.getElementById('suspend-modal').classList.add('hidden');
+    });
+
+    const cancelSuspendBtn = document.getElementById('cancel-suspend-btn');
+    if (cancelSuspendBtn) cancelSuspendBtn.addEventListener('click', () => {
+        document.getElementById('suspend-modal').classList.add('hidden');
+    });
+
+    const reactivateUserBtn = document.getElementById('reactivate-user-btn');
+    if (reactivateUserBtn) reactivateUserBtn.addEventListener('click', async () => {
+        const userId = document.getElementById('misuser-modal').dataset.userId;
+        await reactivateUser(userId);
+    });
+
+    const backToDashboardBtn = document.getElementById('back-to-dashboard-btn');
+    if (backToDashboardBtn) backToDashboardBtn.addEventListener('click', () => {
+        document.getElementById('misuser-modal').classList.add('hidden');
+    });
 });
 
 async function reloadSearchHistory() {
@@ -1577,4 +1624,102 @@ function displayMisusers(misusers) {
         </div>
     `).join('');
     container.innerHTML = html;
+
+    // Add event listeners
+    document.querySelectorAll('.view-misuser-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const userId = e.target.dataset.userId;
+            showMisuserModal(userId);
+        });
+    });
+}
+
+async function showMisuserModal(userId) {
+    try {
+        // Get user info
+        const userResponse = await fetch(`/api/admin/user/${userId}/requests`, {
+            headers: { 'Authorization': 'Bearer ' + AppState.jwt }
+        });
+        const userData = await userResponse.json();
+        
+        if (userData.success) {
+            // For now, we'll need to get user details separately or store them
+            // Let's assume we have the misuser data from the list
+            const misuserCard = document.querySelector(`[data-user-id="${userId}"]`);
+            const name = misuserCard.querySelector('h4').textContent;
+            const email = misuserCard.querySelector('.small-text').textContent.split('\n')[0];
+            const score = misuserCard.querySelectorAll('.small-text')[1].textContent.split(': ')[1];
+            
+            document.getElementById('misuser-email').textContent = email;
+            document.getElementById('misuser-name').textContent = name;
+            document.getElementById('misuser-score').textContent = score;
+            
+            // Display requests
+            const requestsHtml = userData.requests.map(req => `
+                <div class="request-item">
+                    <strong>${req.type.toUpperCase()}:</strong> ${req.query}
+                    <br><small>${new Date(req.timestamp).toLocaleString()}</small>
+                </div>
+            `).join('');
+            document.getElementById('misuser-requests').innerHTML = requestsHtml || '<p>No recent requests</p>';
+            
+            // Set user ID on modal for later use
+            document.getElementById('misuser-modal').dataset.userId = userId;
+            document.getElementById('suspend-user-email').textContent = email;
+            
+            document.getElementById('misuser-modal').classList.remove('hidden');
+        } else {
+            showNotification(userData.message || 'Failed to load user details', 'error');
+        }
+    } catch (e) {
+        console.error('Show misuser modal error:', e);
+        showNotification('Failed to load user details', 'error');
+    }
+}
+
+async function suspendUser(userId, reason) {
+    try {
+        const response = await fetch(`/api/admin/user/${userId}/suspend`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + AppState.jwt
+            },
+            body: JSON.stringify({ reason })
+        });
+        const data = await response.json();
+        if (data.success) {
+            showNotification('User suspended successfully', 'success');
+            document.getElementById('misuser-modal').classList.add('hidden');
+            loadPotentialMisusers(); // Refresh list
+        } else {
+            showNotification(data.message || 'Failed to suspend user', 'error');
+        }
+    } catch (e) {
+        console.error('Suspend user error:', e);
+        showNotification('Failed to suspend user', 'error');
+    }
+}
+
+async function reactivateUser(userId) {
+    try {
+        const response = await fetch(`/api/admin/user/${userId}/reactivate`, {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + AppState.jwt
+            },
+            body: JSON.stringify({})
+        });
+        const data = await response.json();
+        if (data.success) {
+            showNotification('User reactivated successfully', 'success');
+            document.getElementById('misuser-modal').classList.add('hidden');
+            loadPotentialMisusers(); // Refresh list
+        } else {
+            showNotification(data.message || 'Failed to reactivate user', 'error');
+        }
+    } catch (e) {
+        console.error('Reactivate user error:', e);
+        showNotification('Failed to reactivate user', 'error');
+    }
 }

@@ -650,6 +650,63 @@ def get_potential_misusers():
         return jsonify({'success': False, 'message': 'Failed to retrieve misusers'}), 500
 
 
+@app.route('/api/admin/user/<int:user_id>/requests', methods=['GET'])
+@jwt_required()
+@admin_required
+def get_user_requests(user_id):
+    """Get recent requests for a specific user"""
+    try:
+        requests = analytics_engine.get_user_recent_requests(user_id)
+        
+        print(f"[ADMIN USER REQUESTS] Retrieved {len(requests)} requests for user {user_id}")
+        return jsonify({'success': True, 'requests': requests}), 200
+    except Exception as e:
+        print(f"[ADMIN USER REQUESTS ERROR] {e}")
+        return jsonify({'success': False, 'message': 'Failed to retrieve user requests'}), 500
+
+
+@app.route('/api/admin/user/<int:user_id>/suspend', methods=['POST'])
+@jwt_required()
+@admin_required
+def suspend_user(user_id):
+    """Suspend a user account"""
+    try:        
+        data = request.json
+        reason = data.get('reason', '')
+        
+        success = analytics_engine.suspend_user(user_id, reason)
+        
+        if success:
+            print(f"[ADMIN SUSPEND] User {user_id} suspended for reason: {reason}")
+            return jsonify({'success': True, 'message': 'User suspended successfully'}), 200
+        else:
+            return jsonify({'success': False, 'message': 'User not found'}), 404
+        
+    except Exception as e:
+        print(f"[ADMIN SUSPEND ERROR] {e}")
+        return jsonify({'success': False, 'message': 'Failed to suspend user'}), 500
+
+
+@app.route('/api/admin/user/<int:user_id>/reactivate', methods=['POST'])
+@jwt_required()
+@admin_required
+def reactivate_user(user_id):
+    """Reactivate a suspended user account"""
+    try:
+
+        success = analytics_engine.reactivate_user(user_id)
+        
+        if success:
+            print(f"[ADMIN REACTIVATE] User {user_id} reactivated")
+            return jsonify({'success': True, 'message': 'User reactivated successfully'}), 200
+        else:
+            return jsonify({'success': False, 'message': 'User not found'}), 404
+        
+    except Exception as e:
+        print(f"[ADMIN REACTIVATE ERROR] {e}")
+        return jsonify({'success': False, 'message': 'Failed to reactivate user'}), 500
+
+
 # ==================== UTILITY ROUTES ====================
 
 @app.route('/api/health', methods=['GET'])
@@ -661,17 +718,6 @@ def health_check():
 def home():
     """Serve frontend"""
     return render_template('index.html')
-
-
-@app.route('/api/admin/make_admin/<email>', methods=['POST'])
-def make_admin(email):
-    """Temporary route to make a user admin for testing"""
-    user = User.query.filter_by(email=email).first()
-    if user:
-        user.is_admin = True
-        db.session.commit()
-        return jsonify({'success': True, 'message': f'User {email} is now admin'})
-    return jsonify({'success': False, 'message': 'User not found'}), 404
 
 
 if __name__ == "__main__":
