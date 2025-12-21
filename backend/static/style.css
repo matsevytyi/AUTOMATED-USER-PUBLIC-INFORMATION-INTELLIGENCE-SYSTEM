@@ -1127,6 +1127,30 @@ select.form-control {
   font-style: italic;
 }
 
+/* Search History */
+#search-history {
+  height: 250px;
+  overflow-y: auto;
+}
+
+#search-history::-webkit-scrollbar {
+  width: 8px;
+}
+
+#search-history::-webkit-scrollbar-track {
+  background: var(--color-surface);
+  border-radius: 4px;
+}
+
+#search-history::-webkit-scrollbar-thumb {
+  background: var(--color-muted);
+  border-radius: 4px;
+}
+
+#search-history::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
+
 /* Report Display */
 .report-card {
   margin-top: var(--space-32);
