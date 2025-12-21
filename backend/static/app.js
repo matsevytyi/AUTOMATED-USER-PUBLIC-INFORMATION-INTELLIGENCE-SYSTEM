@@ -4,8 +4,7 @@ const AppState = {
     jwt: null,
     currentPage: 'home',
     searchHistory: [],
-    currentReport: null,
-    pendingUser: null
+    currentReport: null
 };
 
 // Chat state
@@ -372,15 +371,6 @@ async function loginUser(formData) {
         AppState.jwt = data.access_token;
     }
     return data;
-}
-
-async function confirmEmail(email) {
-    const response = await fetch('/api/confirm', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ email })
-    });
-    return await response.json();
 }
 
 async function searchReport(query, generalSearch, facebookSearch) {
@@ -995,40 +985,6 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 showNotification(response.message ? ('Try Again! ' + response.message) : 'Failed to change password', 'error');
                 setButtonLoading(submitBtn, false);
-            }
-        });
-    }
-    
-    
-    // Email confirmation simulation
-    const simulateConfirmBtn = document.getElementById('simulate-confirm-btn');
-    if (simulateConfirmBtn) {
-        simulateConfirmBtn.addEventListener('click', async function() {
-            if (!AppState.pendingUser) {
-                showNotification('No pending confirmation found', 'error');
-                return;
-            }
-            
-            setButtonLoading(this, true);
-            
-            try {
-
-                const response = await fetch('/api/confirm', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ email: AppState.pendingUser.email })
-                }).then(res => res.json());
-
-                AppState.currentUser = response.user;
-                AppState.pendingUser = null;
-
-                showNotification(response.message, 'success');
-                showPage('dashboard');
-
-            } catch (error) {
-                showNotification(error.message, 'error');
-            } finally {
-                setButtonLoading(this, false);
             }
         });
     }

@@ -134,20 +134,6 @@ def login():
         return jsonify({'success': False, 'message': 'Login failed. Please try again.'}), 500
 
 
-@app.route('/api/confirm', methods=['POST'])
-def confirm_email():
-    """Confirm user email address"""
-    try:
-        data = request.json
-        result = auth_service.confirm_email(data.get('email', ''))
-        return jsonify(result), 200
-    except ValueError as e:
-        return jsonify({'success': False, 'message': str(e)}), 404
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'success': False, 'message': 'Email confirmation failed.'}), 500
-
-
 # ==================== SEARCH & REPORT ROUTES ====================
 
 @app.route('/api/search', methods=['POST'])

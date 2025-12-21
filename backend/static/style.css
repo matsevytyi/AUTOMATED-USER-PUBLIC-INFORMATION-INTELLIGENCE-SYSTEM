@@ -1039,12 +1039,6 @@ select.form-control {
   border-color: var(--color-error);
 }
 
-/* Confirmation Page */
-.confirmation-status {
-  text-align: center;
-  margin: var(--space-24) 0;
-}
-
 /* Dashboard */
 .dashboard-header {
   background: var(--color-surface);

@@ -13,7 +13,6 @@ class User(db.Model):
     password_hash = db.Column(db.String(255), nullable=False)
     name = db.Column(db.String(100), nullable=True)
     theme = db.Column(db.String(20), nullable=True, default='device')
-    confirmed = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     average_misuse_score = db.Column(db.Float, nullable=True)
     

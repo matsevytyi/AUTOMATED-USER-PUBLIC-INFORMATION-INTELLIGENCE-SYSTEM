@@ -44,8 +44,7 @@ class AuthService:
         new_user = User(
             email=email,
             password_hash=password_hash,
-            name=name,
-            confirmed=False
+            name=name
         )
         
         user = new_user
@@ -77,7 +76,7 @@ class AuthService:
             dict: Success response with access token and user info
             
         Raises:
-            ValueError: If credentials are invalid or email not confirmed
+            ValueError: If credentials are invalid
         """
         email = email.strip().lower()
         
@@ -89,9 +88,6 @@ class AuthService:
         
         if not user or not self._verify_password(password, user.password_hash):
             raise ValueError('Invalid email or password.')
-        
-        if not user.confirmed:
-            raise ValueError('Please confirm your email before logging in.')
         
         if user.is_deactivated:
             raise ValueError('Your account has been deactivated.')
@@ -113,33 +109,6 @@ class AuthService:
         print("returning", payload)
         
         return payload
-    
-    def confirm_email(self, email):
-        """
-        Confirm user's email address
-        
-        Args:
-            email: User's email address
-            
-        Returns:
-            dict: Success response
-            
-        Raises:
-            ValueError: If user not found
-        """
-        email = email.strip().lower()
-        
-        user = User.query.filter_by(email=email).first()
-        if not user:
-            raise ValueError('User not found.')
-        
-        user.confirmed = True
-        self.db.session.commit()
-        
-        return {
-            'success': True,
-            'message': 'Email confirmed successfully. You can now log in.'
-        }
     
     def change_password(self, email, current_password, new_password):
         """

@@ -28,7 +28,6 @@ class ProfileService:
         return {
             'email': user.email,
             'name': user.name,
-            'confirmed': user.confirmed,
             'created_at': user.created_at.isoformat() + 'Z',
             'total_reports': len(user.reports),
             'total_searches': len(user.searches),
