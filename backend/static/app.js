@@ -933,7 +933,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 } catch (e) {
                 }
 
-                showPage('dashboard');
+                // Check if admin and redirect accordingly
+                if (AppState.currentUser && AppState.currentUser.is_admin) {
+                    showPage('admin-dashboard');
+                } else {
+                    showPage('dashboard');
+                }
                 await reloadSearchHistory();
                 // update FB cookies status for logged-in user
                 getFacebookCookiesStatus();

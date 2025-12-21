@@ -512,6 +512,125 @@
 
         </section>
 
+        <!-- Admin Dashboard Page -->
+        <section id="admin-dashboard-page" class="page">
+            <div class="dashboard-header">
+                <div class="container flex items-center justify-between">
+                    <div>
+                        <h1>Admin Dashboard</h1>
+                        <p class="dashboard-welcome">Welcome back, <span id="admin-user-name">Admin</span></p>
+                    </div>
+                    <div class="dashboard-nav">
+                        <button class="btn btn--outline" id="admin-logout-btn">Logout</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dashboard-content">
+                <div class="container">
+                    <div class="dashboard-grid">
+                        <!-- System Statistics -->
+                        <div class="dashboard-section">
+                            <div class="section-card card">
+                                <div class="card__body">
+                                    <h3>System Statistics</h3>
+                                    <div id="system-stats">
+                                        <div class="stat-item">
+                                            <span class="stat-label">Active Users (30 days):</span>
+                                            <span class="stat-value" id="active-users">Loading...</span>
+                                        </div>
+                                        <div class="stat-item">
+                                            <span class="stat-label">Active Sessions (1 hour):</span>
+                                            <span class="stat-value" id="active-sessions">Loading...</span>
+                                        </div>
+                                        <div class="stat-item">
+                                            <span class="stat-label">User Acquisition Velocity:</span>
+                                            <span class="stat-value" id="acquisition-velocity">Loading...</span>
+                                        </div>
+                                        <div class="stat-item">
+                                            <span class="stat-label">Reports This Week:</span>
+                                            <span class="stat-value" id="weekly-reports">Loading...</span>
+                                        </div>
+                                        <div class="stat-item">
+                                            <span class="stat-label">Chat Sessions This Week:</span>
+                                            <span class="stat-value" id="weekly-chats">Loading...</span>
+                                        </div>
+                                        <div class="stat-item">
+                                            <span class="stat-label">Apdex Score:</span>
+                                            <span class="stat-value" id="apdex-score">Loading...</span>
+                                        </div>
+                                        <div class="stat-item">
+                                            <span class="stat-label">Misuse Severity Index:</span>
+                                            <span class="stat-value" id="misuse-index">Loading...</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Potential Misusers -->
+                        <div class="dashboard-section">
+                            <div class="section-card card">
+                                <div class="card__body">
+                                    <h3>Potential Misusers</h3>
+                                    <div id="misusers-list">
+                                        <p class="empty-state">Loading potential misusers...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Misuser Details Modal -->
+                    <div id="misuser-modal" class="modal hidden">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h2 id="misuser-title">User Details</h2>
+                                <button class="modal-close" id="misuser-modal-close">&times;</button>
+                            </div>
+                            <div class="modal-body">
+                                <div id="misuser-info">
+                                    <p><strong>Email:</strong> <span id="misuser-email"></span></p>
+                                    <p><strong>Name:</strong> <span id="misuser-name"></span></p>
+                                    <p><strong>Misuse Score:</strong> <span id="misuser-score"></span></p>
+                                </div>
+                                <h3>Recent Requests</h3>
+                                <div id="misuser-requests">
+                                    <p>Loading requests...</p>
+                                </div>
+                                <div class="modal-actions">
+                                    <button class="btn btn--danger" id="suspend-user-btn">Suspend User</button>
+                                    <button class="btn btn--success" id="reactivate-user-btn">Reactivate User</button>
+                                    <button class="btn btn--outline" id="back-to-dashboard-btn">Back to Dashboard</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Suspend User Modal -->
+                    <div id="suspend-modal" class="modal hidden">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h2>Suspend User</h2>
+                                <button class="modal-close" id="suspend-modal-close">&times;</button>
+                            </div>
+                            <div class="modal-body">
+                                <p>Are you sure you want to suspend <span id="suspend-user-email"></span>?</p>
+                                <div class="form-group">
+                                    <label for="suspend-reason">Reason for suspension:</label>
+                                    <textarea id="suspend-reason" class="form-control" required></textarea>
+                                </div>
+                                <div class="modal-actions">
+                                    <button class="btn btn--danger" id="confirm-suspend-btn">Confirm Suspension</button>
+                                    <button class="btn btn--outline" id="cancel-suspend-btn">Cancel</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
 
         <!-- Loading Overlay -->
         <div id="loading-overlay" class="loading-overlay hidden">
