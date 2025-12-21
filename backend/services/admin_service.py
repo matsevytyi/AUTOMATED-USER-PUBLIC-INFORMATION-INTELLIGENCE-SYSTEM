@@ -1,16 +1,19 @@
 from models import db, User, Report, SearchHistory, ChatSession
-from sqlalchemy import func, text
+from sqlalchemy import func, text, case
 from datetime import datetime, timedelta
 import math
 import re
 from collections import defaultdict
 import Levenshtein
+from backend.utils.config import Config
 
 class AdminService:
     """Engine for admin analytics and misuse detection"""
 
     def __init__(self, db):
         self.db = db
+        self.satisfactory_generation_time = Config.SATISFACTORY_GENERATION_TIME
+        self.tolerating_generation_time = Config.SATISFACTORY_GENERATION_TIME * 1.1
 
     def get_system_statistics(self):
         """Get all system usage statistics"""
@@ -82,10 +85,22 @@ class AdminService:
         stats['weekly_chats'] = current_week_chats
 
         # Apdex Score
-        total_searches = self.db.session.query(func.count(SearchHistory.id)).filter(
-            SearchHistory.created_at >= thirty_days_ago
-        ).scalar()
-        stats['apdex_score'] = 1.0 if total_searches > 0 else 0.0  # Placeholder
+        counts = self.db.session.query(
+            func.count(Report.id).label('total'),
+            func.count(case((Report.generation_time_seconds <= self.satisfactory_generation_time, Report.id))).label('satisfied'),
+            func.count(case((Report.generation_time_seconds <= self.tolerating_generation_time, Report.id))).label('tolerating')
+        ).filter(
+            Report.generated_at >= thirty_days_ago
+        ).first()
+
+        # Access the results
+        total_searches = counts.total or 1
+        satisfied_searches = counts.satisfied or 0
+        tolerating_searches = counts.tolerating or 0
+        
+        tolerating_converted = 0.5*(tolerating_searches - satisfied_searches)
+        
+        stats['apdex_score'] = (satisfied_searches + tolerating_converted) / total_searches
 
         # Misuse Severity Index
         users = self.db.session.query(User).all()

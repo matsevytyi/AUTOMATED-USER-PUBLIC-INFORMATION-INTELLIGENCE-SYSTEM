@@ -47,6 +47,9 @@ category_weights:
   public_statement: 5
   personal_identifier: 5
 
+# admin
+satisfactory_generation_time: 300
+
 # database
 db_host: aws-1-eu-west-1.pooler.supabase.com
 db_port: 5432

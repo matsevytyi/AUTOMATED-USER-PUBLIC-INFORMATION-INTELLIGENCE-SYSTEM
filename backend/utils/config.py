@@ -28,6 +28,8 @@ class Config:
     CONTEXT_COEFFICIENT = cfg['context_coefficient']
     CATEGORY_WEIGHTS = cfg['category_weights']
     
+    SATISFACTORY_GENERATION_TIME = cfg['satisfactory_generation_time'] or 300
+    
     DB_USER = os.environ.get('DB_USER')
     DB_PASSWORD = os.environ.get('DB_PASSWORD')
     DB_HOST = cfg['db_host']
