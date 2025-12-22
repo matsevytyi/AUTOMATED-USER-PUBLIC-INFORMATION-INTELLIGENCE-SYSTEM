@@ -694,7 +694,7 @@ async function loadReport(reportId) {
     if (report) {
         // Check if it's a full report (has detailed_findings)
         if (report.detailed_findings) {
-        displayReport(report);
+            displayReport(report);
         } else {
             // Load full report
             const fullReport = await getReport(reportId);

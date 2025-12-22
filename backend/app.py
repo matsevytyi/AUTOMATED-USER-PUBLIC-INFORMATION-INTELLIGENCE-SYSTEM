@@ -774,11 +774,10 @@ def download_document(filename):
 def remove_document(filename):
     """Remove a document from the knowledge base"""
     try:
-        success = rag_engine.remove_document(filename)
-        if success:
-            return jsonify({'success': True, 'message': 'Document removed successfully'}), 200
-        else:
-            return jsonify({'success': False, 'message': 'Document not found'}), 404
+        # Remove .pdf extension if present
+        document_name = filename.replace('.pdf', '')
+        message = rag_engine.delete_document(document_name)
+        return jsonify({'success': True, 'message': message}), 200
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 

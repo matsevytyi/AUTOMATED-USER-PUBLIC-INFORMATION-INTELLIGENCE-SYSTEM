@@ -153,6 +153,41 @@ class VectorStorage():
         return results
 
     
+    def delete_documents_by_metadata(self, metadata_filter):
+        """Delete documents from vector store based on metadata filter
+        
+        Args:
+            metadata_filter: dict of metadata key-value pairs to match
+        """
+        conn = self.get_pg_connection()
+        cursor = conn.cursor()
+        
+        # Build WHERE clause from metadata_filter
+        where_conditions = []
+        values = []
+        for key, value in metadata_filter.items():
+            where_conditions.append(f"metadata->>'{key}' = %s")
+            values.append(value)
+        
+        where_clause = " AND ".join(where_conditions)
+        
+        query = f"DELETE FROM {self.table_name} WHERE {where_clause}"
+        
+        try:
+            cursor.execute(query, values)
+            deleted_count = cursor.rowcount
+            conn.commit()
+            print(f"Deleted {deleted_count} documents matching metadata filter: {metadata_filter}")
+            return deleted_count
+        except Exception as e:
+            print(f"Error deleting documents: {e}")
+            conn.rollback()
+            return 0
+        finally:
+            cursor.close()
+            conn.close()
+
+    
     # enduser functions
     def _get_relevant_documents(self, query):
         return self.query_pgvector(query, self.k)
