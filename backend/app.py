@@ -13,8 +13,11 @@ from datetime import datetime
 
 from backend.utils.scheduled import start_scheduler
 from backend.utils.config import Config
-from models import db, InformationPiece, ChatSession, ChatMessage, User
+from models import db, User
 from backend.wrappers.llm_wrapper import chat
+
+import bleach
+from functools import wraps
 
 import ssl
 
@@ -22,6 +25,63 @@ import ssl
 from services import AuthService, ReportService, FacebookAuthService, ProfileService, AssistantService
 from backend.services.admin_service import AdminService
 
+
+
+# ==================== SETTINGS AND ROLE-AUTH DECORATORS ====================
+
+def recursive_clean(item):
+
+    if isinstance(item, dict):
+        return {k: recursive_clean(v) for k, v in item.items()}
+    
+    elif isinstance(item, list):
+        return [recursive_clean(i) for i in item]
+    
+    elif isinstance(item, str):
+
+        return bleach.clean(item, tags=[], attributes={}, strip=True)
+    
+    return item
+
+def register_security_hooks(app):
+    
+    # inbound sanitization(Before the route handles data)
+    @app.before_request
+    def sanitize_incoming_requests():
+        if request.is_json and request.data:
+            try:
+                data = request.get_json()
+                clean_data = recursive_clean(data)
+                
+                request._cached_json = (clean_data, clean_data)
+            except Exception as e:
+                 # If parsing fails, return original response to avoid throwing
+                pass
+
+    # outboun sanitization (Before the response leaves the server)
+    @app.after_request
+    def sanitize_outgoing_response(response):
+        if response.is_json:
+            try:
+
+                content = response.get_data(as_text=True)
+                data = json.loads(content)
+
+                clean_data = recursive_clean(data)
+                
+                response.set_data(json.dumps(clean_data))
+            except Exception:
+                pass
+        
+        return response
+
+    # nocache headers (Prevent browser from storing sensitive data)
+    @app.after_request
+    def add_no_cache_headers(response):
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        return response
 
 def create_app():
     
@@ -40,6 +100,8 @@ def create_app():
     # Create tables
     with app.app_context():
         db.create_all()
+        
+    register_security_hooks(app)
     
     return app
 
@@ -55,14 +117,6 @@ analytics_engine = AdminService(db)
 
 report_service = ReportService(db)
 assistant_service = AssistantService(db)
-
-# ==================== SETTINGS AND ROLE-AUTH DECORATORS ====================
-@app.after_request
-def add_no_cache_headers(response):
-    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
-    response.headers["Pragma"] = "no-cache"
-    response.headers["Expires"] = "0"
-    return response
 
 def admin_required(f):
     @wraps(f)
@@ -97,7 +151,6 @@ def active_required(f):
             
         return f(*args, **kwargs)
     return decorated_function
-
 
 # ==================== AUTH ROUTES ====================
 
