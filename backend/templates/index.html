@@ -566,6 +566,30 @@
                         </div>
                     </div>
 
+                    <!-- Document Management -->
+                    <div class="dashboard-section">
+                        <div class="section-card card">
+                            <div class="card__body">
+                                <h3>Knowledge Base Management</h3>
+                                
+                                <!-- Upload Section -->
+                                <div class="form-group">
+                                    <label class="form-label">Upload PDF Document</label>
+                                    <input type="file" id="document-file" accept=".pdf" class="form-control">
+                                    <div class="form-help">Upload PDF files to add to the knowledge base</div> <br>
+                                    <button class="btn btn--primary" id="upload-document-btn">Upload & Process</button>
+                                    <br>
+                                </div>
+                                
+                                <!-- Documents List -->
+                                <h4>Current Documents</h4> <br>
+                                <div id="documents-list">
+                                    <p class="empty-state">Loading documents...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Misuser Details Modal -->
                     <div id="misuser-modal" class="modal hidden">
                         <div class="modal-content">

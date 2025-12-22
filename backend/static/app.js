@@ -664,6 +664,8 @@ function initializeAdminDashboard() {
         loadAdminStats();
         loadPotentialMisusers();
         loadSuspendedUsers();
+        loadDocuments();
+        
     }
 }
 
@@ -1754,5 +1756,42 @@ async function reactivateSuspendedUser(userId) {
     } catch (e) {
         console.error('Reactivate suspended user error:', e);
         showNotification('Failed to reactivate user', 'error');
+    }
+}
+
+//  KNOWLEDGE BASE MANAGEMENT
+
+async function loadDocuments() {
+    const documentsList = document.getElementById('documents-list');
+    if (!documentsList) return;
+    
+    try {
+        const response = await fetch('/api/admin/documents', {
+            headers: {
+                'Authorization': `Bearer ${AppState.jwt}`
+            }
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            if (data.documents.length === 0) {
+                documentsList.innerHTML = '<p class="empty-state">No documents in knowledge base.</p>';
+            } else {
+                documentsList.innerHTML = data.documents.map(doc => `
+                    <div class="document-item" style="display: flex; justify-content: space-between; align-items: center; padding: 8px; border: 1px solid var(--color-border); border-radius: 4px; margin-bottom: 8px;">
+                        <span>${doc.filename}</span>
+                        <div>
+                            <button class="btn btn--outline btn--sm" onclick="downloadDocument('${doc.filename}')">Download</button>
+                            <button class="btn btn--danger btn--sm" onclick="removeDocument('${doc.filename}')">Remove</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        } else {
+            documentsList.innerHTML = '<p class="empty-state">Failed to load documents.</p>';
+        }
+    } catch (e) {
+        console.error('Load documents error:', e);
+        documentsList.innerHTML = '<p class="empty-state">Failed to load documents.</p>';
     }
 }
