@@ -1331,6 +1331,15 @@ document.addEventListener('DOMContentLoaded', function() {
     const adminLogoutBtn = document.getElementById('admin-logout-btn');
     if (adminLogoutBtn) adminLogoutBtn.addEventListener('click', logout);
 
+    const adminReloadBtn = document.getElementById('admin-reload-btn');
+    if (adminReloadBtn) adminReloadBtn.addEventListener('click', () => {
+        loadAdminStats();
+        loadPotentialMisusers();
+        loadSuspendedUsers();
+        loadDocuments();
+        showNotification('Dashboard reloaded', 'info');
+    });
+
     const misuserModalClose = document.getElementById('misuser-modal-close');
     if (misuserModalClose) misuserModalClose.addEventListener('click', () => {
         document.getElementById('misuser-modal').classList.add('hidden');
