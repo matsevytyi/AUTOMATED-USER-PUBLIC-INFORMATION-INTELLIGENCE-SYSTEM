@@ -157,7 +157,10 @@ class DataProcessingEngine:
                 candidates[ent['word'].replace("##", "").strip()] = True
         for word in r_words:
             if word not in ignored:
-                candidates[word.strip()] = True
+                ner_results_2 = self.ner_pipeline(word, grouped_entities=True)
+                if len(ner_results_2) > 0 and ner_results_2[0].get('entity_group'):
+                    if ner_results_2[0]['entity_group'] == 'PER':
+                            candidates[ent['word'].replace("##", "").strip()] = True
 
         if not candidates:
             return 0.0
@@ -169,6 +172,7 @@ class DataProcessingEngine:
             # Immediate Substring Match
             # If "Andrii" is in "Andrii Matsevytyi" -> 0.0 misuse
             if (u1 and (v_low in u1 or u1 in v_low)) or (u2 and (v_low in u2 or u2 in v_low)):
+                ratios.append(0.0)
                 ratios.append(0.0)
                 continue
                 
