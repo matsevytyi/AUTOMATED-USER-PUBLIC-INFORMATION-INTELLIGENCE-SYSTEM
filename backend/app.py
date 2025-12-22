@@ -170,8 +170,8 @@ def search():
 
 
 @app.route('/api/report/<report_id>', methods=['GET'])
-@active_required
 @jwt_required()
+@active_required
 def get_report(report_id):
     """Retrieve a specific report"""
     try:
@@ -447,7 +447,7 @@ def create_chat_session(report_id):
         
         if not cs:
             return jsonify({'success': False, 'message': 'Failed to create session'}), 500
-        return jsonify({'success': True, 'session': cs.to_dict()}), 201
+        return jsonify({'success': True, 'session': cs.to_dict()}), 200
     except Exception as e:
         print(f'Failed to create chat session: {e}')
         return jsonify({'success': False, 'message': 'Failed to create session'}), 500

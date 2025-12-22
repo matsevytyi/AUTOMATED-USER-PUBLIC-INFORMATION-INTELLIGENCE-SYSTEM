@@ -216,6 +216,8 @@ class FacebookScrapingService:
     def _scrape_page(self, url, amount_of_posts=50, human=True):
         self._apply_cookies(url)
         
+        # TODO: detect if page is bad (e.g. cookie confirmation) and what to do
+        
         # Use a Set to store unique posts (prevents duplicates)
         collected_posts = set()
         
@@ -234,7 +236,6 @@ class FacebookScrapingService:
         
         while len(collected_posts) < amount_of_posts:
             # 1. SCRAPE CURRENT VIEWPORT
-            # We scrape *before* scrolling to capture what is currently visible
             soup = BeautifulSoup(self.scraper.page_source, 'html.parser')
             
             found_new_data = False
@@ -265,7 +266,7 @@ class FacebookScrapingService:
             
             if new_height == last_height:
                 consecutive_scroll_fails += 1
-                print(f"  - No new content loaded (Attempt {consecutive_scroll_fails}/3)")
+                print(f"  - No new content loaded (Attempt {consecutive_scroll_fails}/2)")
                 
                 # Try jiggling the scroll to trigger lazy loading
                 self.scraper.execute_script("window.scrollBy(0, -300);")
