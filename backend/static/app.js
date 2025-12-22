@@ -1306,6 +1306,17 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // Loading close button
+    const loadingCloseBtn = document.getElementById('loading-close-btn');
+    if (loadingCloseBtn) {
+        loadingCloseBtn.addEventListener('click', function() {
+            hideLoading();
+            // Reset search button loading
+            const submitBtn = document.getElementById('search-submit-btn');
+            if (submitBtn) setButtonLoading(submitBtn, false);
+        });
+    }
+    
     // Clear form errors on input
     const formInputs = document.querySelectorAll('.form-control');
     formInputs.forEach(input => {
