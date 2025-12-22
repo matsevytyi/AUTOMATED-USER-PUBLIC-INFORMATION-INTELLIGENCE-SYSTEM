@@ -698,6 +698,36 @@ def list_documents():
 
 
 
+@app.route('/api/admin/documents/<filename>/download', methods=['GET'])
+@jwt_required()
+@admin_required
+def download_document(filename):
+    """Download a document from the knowledge base"""
+    try:
+        filepath = rag_engine.download_document(filename)
+        if not filepath:
+            return jsonify({'success': False, 'message': 'Document not found'}), 404
+        
+        from flask import send_file
+        return send_file(filepath, as_attachment=True)
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/admin/documents/<filename>', methods=['DELETE'])
+@jwt_required()
+@admin_required
+def remove_document(filename):
+    """Remove a document from the knowledge base"""
+    try:
+        success = rag_engine.remove_document(filename)
+        if success:
+            return jsonify({'success': True, 'message': 'Document removed successfully'}), 200
+        else:
+            return jsonify({'success': False, 'message': 'Document not found'}), 404
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 
 
 
