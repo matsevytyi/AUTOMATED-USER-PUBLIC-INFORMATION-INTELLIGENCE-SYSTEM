@@ -329,6 +329,17 @@ function updateNavigation() {
         if (loginBtn) loginBtn.classList.add('hidden');
         if (registerBtn) registerBtn.classList.add('hidden');
         if (logoutBtn) logoutBtn.classList.remove('hidden');
+        // Hide dashboard button for admins
+
+        const navbar = document.getElementById('general-navbar');
+
+        if (navbar) {
+            if (AppState.currentUser.is_admin) {
+                navbar.classList.add('hidden');
+            } else {
+                navbar.classList.remove('hidden');
+            }
+        }
     } else {
         if (loginBtn) loginBtn.classList.remove('hidden');
         if (registerBtn) registerBtn.classList.remove('hidden');
