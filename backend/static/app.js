@@ -665,7 +665,7 @@ function initializeAdminDashboard() {
         loadPotentialMisusers();
         loadSuspendedUsers();
         loadDocuments();
-        
+        initializeDocumentUpload();
     }
 }
 
@@ -1793,5 +1793,59 @@ async function loadDocuments() {
     } catch (e) {
         console.error('Load documents error:', e);
         documentsList.innerHTML = '<p class="empty-state">Failed to load documents.</p>';
+    }
+}
+
+async function downloadDocument(filename) {
+    try {
+        const response = await fetch(`/api/admin/documents/${filename}/download`, {
+            headers: {
+                'Authorization': `Bearer ${AppState.jwt}`
+            }
+        });
+        
+        if (response.ok) {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } else {
+            showNotification('Download failed', 'error');
+        }
+    } catch (e) {
+        console.error('Download document error:', e);
+        showNotification('Download failed', 'error');
+    }
+}
+
+async function removeDocument(filename) {
+    if (!confirm(`Are you sure you want to remove "${filename}" from the knowledge base?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/admin/documents/${filename}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${AppState.jwt}`
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showNotification(data.message, 'success');
+            loadDocuments();
+        } else {
+            showNotification(data.message || 'Removal failed', 'error');
+        }
+    } catch (e) {
+        console.error('Remove document error:', e);
+        showNotification('Removal failed', 'error');
     }
 }
