@@ -381,6 +381,16 @@ pre code {
   width: 100%;
 }
 
+.btn--danger {
+  background: transparent;
+  border: 1px solid var(--color-error);
+  color: var(--color-error);
+}
+
+.btn--danger:hover {
+  background: rgba(var(--color-error-rgb), 0.1);
+}
+
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
