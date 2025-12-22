@@ -556,7 +556,7 @@ def post_session_message(session_id):
     
     return jsonify({'success': True, 'assistant': reply, 'sources': sources}), 200
 
-@app.route('/api/settings/delete-account', methods=['POST'])
+@app.route('/api/settings/delete-account', methods=['POST']) # update to /api/profile, method=['DELETE']
 @jwt_required()
 @active_required
 def delete_account():
@@ -696,6 +696,60 @@ def list_documents():
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
+
+@app.route('/api/admin/documents/upload', methods=['POST'])
+@jwt_required()
+@admin_required
+def upload_document():
+    """Upload a document to the knowledge base"""
+    try:
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'message': 'No file provided'}), 400
+        
+        file = request.files['file']
+        if file.filename == '' or not file.filename.endswith('.pdf'):
+            return jsonify({'success': False, 'message': 'Invalid file. Only PDF files are allowed.'}), 400
+        
+        # Save file to upload directory
+        filename = file.filename
+        filepath = os.path.join(rag_engine.DATA_PATH, filename)
+        file.save(filepath)
+        
+        # Check for conflicts
+        conflicts = rag_engine.prepare_new_RAG_pdf_pipeline()
+        
+        # Check if the uploaded file has conflicts
+        file_title = filename[:-4]  # Remove .pdf extension
+        if file_title in conflicts and conflicts[file_title]['status'] == 'conflicts_found':
+            # Return conflict information
+            return jsonify({
+                'success': True, 
+                'status': 'conflicts_detected',
+                'conflicts': conflicts[file_title]['conflicts'],
+                'filename': filename
+            }), 200
+        
+        # No conflicts, process immediately
+        result = rag_engine.load_RAG_pdf_pipeline()
+        return jsonify({'success': True, 'message': result}), 200
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/admin/documents/process', methods=['POST'])
+@jwt_required()
+@admin_required
+def process_documents():
+    """Process uploaded documents with conflict resolution"""
+    try:
+        data = request.json
+        conflict_resolutions = data.get('resolutions', {})
+        
+        result = rag_engine.load_RAG_pdf_pipeline(conflict_resolutions=conflict_resolutions)
+        return jsonify({'success': True, 'message': result}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 
 @app.route('/api/admin/documents/<filename>/download', methods=['GET'])

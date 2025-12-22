@@ -1796,6 +1796,57 @@ async function loadDocuments() {
     }
 }
 
+function initializeDocumentUpload() {
+    const uploadBtn = document.getElementById('upload-document-btn');
+    const fileInput = document.getElementById('document-file');
+    
+    if (uploadBtn && fileInput) {
+        uploadBtn.addEventListener('click', async () => {
+            const file = fileInput.files[0];
+            if (!file) {
+                showNotification('Please select a file to upload', 'error');
+                return;
+            }
+            
+            setButtonLoading(uploadBtn, true);
+            
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                const response = await fetch('/api/admin/documents/upload', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${AppState.jwt}`
+                    },
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    if (data.status === 'conflicts_detected') {
+                        // Handle conflicts - for now, just show message
+                        showNotification('Document uploaded but conflicts detected. Processing with existing version.', 'warning');
+                        loadDocuments();
+                    } else {
+                        showNotification(data.message, 'success');
+                        loadDocuments();
+                    }
+                    fileInput.value = '';
+                } else {
+                    showNotification(data.message || 'Upload failed', 'error');
+                }
+            } catch (e) {
+                console.error('Upload document error:', e);
+                showNotification('Upload failed', 'error');
+            } finally {
+                setButtonLoading(uploadBtn, false);
+            }
+        });
+    }
+}
+
 async function downloadDocument(filename) {
     try {
         const response = await fetch(`/api/admin/documents/${filename}/download`, {

@@ -235,18 +235,15 @@ class DataProcessingEngine:
                 curr = ner_results[0]
                 
                 for next_ent in ner_results[1:]:
-                    # Check gap between current entity end and next entity start
-                    gap = text[curr['end']:next_ent['start']]
                     
-                    # If both are PER and separated by space, hyphen, or nothing -> MERGE
+                    gap = text[curr['end']:next_ent['start']]
+
                     if (curr['entity_group'] == 'PER' and next_ent['entity_group'] == 'PER' and 
                         gap in ['', ' ', '-']):
                         
-                        # Combine words: "Vytautas" + " " + "Rudžionis"
+                        # Combine words: e.g. "Vytautas" + " " + "Rudžionis"
                         curr['word'] += gap + next_ent['word']
-                        # Extend the endpoint
                         curr['end'] = next_ent['end']
-                        # Average the score (optional, but good for tracking confidence)
                         curr['score'] = (curr['score'] + next_ent['score']) / 2
                     else:
                         # No merge, push current and move to next
