@@ -823,6 +823,18 @@ function logout() {
         reportSection.classList.add('hidden');
     }
     
+    // Clear form fields
+    const formsToClear = ['register-form', 'login-form', 'search-form', 'update-password-form'];
+    formsToClear.forEach(formId => {
+        const form = document.getElementById(formId);
+        if (form) form.reset();
+    });
+    const fieldsToClear = ['fb-login', 'fb-password', 'cookies-json'];
+    fieldsToClear.forEach(fieldId => {
+        const field = document.getElementById(fieldId);
+        if (field) field.value = '';
+    });
+    
     showNotification('Logged out successfully', 'info');
     showPage('home');
     // restore guest/global theme (do not keep previous user's theme applied)
