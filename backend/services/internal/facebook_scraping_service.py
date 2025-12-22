@@ -48,7 +48,7 @@ class FacebookScrapingService:
         except Exception as e:
             print(f"Error in search thread: {e}")
 
-    def search_and_scrape_profiles_background(self, search_request, results: Queue, cookies):
+    def search_and_scrape_profiles_background(self, search_request, results: Queue, cookies, profiles_max=10):
         print(f"[{'REMOTE' if self.remote_url else 'LOCAL'}] Obtaining Facebook profiles...")
         
         if isinstance(cookies, str):
@@ -58,6 +58,7 @@ class FacebookScrapingService:
             
         try:
             user_profiles = self.obtain_profiles(search_request)
+            user_profiles = user_profiles[:profiles_max]
             for profile in user_profiles:
                 print("Scraping Facebook profile:", profile)
                 profile_data = self.search_profile(profile, amount_of_posts=100)
