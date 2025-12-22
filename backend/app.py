@@ -81,6 +81,13 @@ def register_security_hooks(app):
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
         response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "0"
+        
+        # no clickjacking
+        response.headers["X-Frame-Options"] = "SAMEORIGIN"
+        
+        # HSTS (against MITM, enforce HTTPS only)
+        response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+        
         return response
 
 def create_app():
@@ -676,15 +683,64 @@ def health_check():
     """Health check endpoint"""
     return jsonify({'status': 'healthy', 'timestamp': datetime.utcnow().isoformat() + 'Z'})
 
-@app.route('/api/admin/make_admin/<email>', methods=['POST'])
-def make_admin(email):
-    """Temporary route to make a user admin for testing"""
-    user = User.query.filter_by(email=email).first()
-    if user:
-        user.is_admin = True
-        db.session.commit()
-        return jsonify({'success': True, 'message': f'User {email} is now admin'})
-    return jsonify({'success': False, 'message': 'User not found'}), 404
+# @app.route('/admin', methods=['GET', 'POST'])
+# @admin_required
+# def admin():
+#     message = None
+#     if request.method == 'POST':
+#         try:
+#             message = prepare_new_RAG_pdf_pipeline()
+#             flash(message, 'success')
+#         except Exception as e:
+#             logger.error(f"Admin pipeline error: {str(e)}")
+#             flash(f"Failed to process documents: {str(e)}", 'danger')
+#     return render_template('admin.html', message=message)
+
+# @app.route('/run_pipeline')
+# @admin_required
+# def run_pipeline():
+#     # First check for conflicts
+#     conflicts = prepare_new_RAG_pdf_pipeline()
+    
+#     # Check if any conflicts were found
+#     has_conflicts = any(doc.get('status') == 'conflicts_found' for doc in conflicts.values())
+    
+#     if has_conflicts:
+#         return jsonify({"conflicts": conflicts})
+    
+#     # If no conflicts, proceed with embedding all documents
+#     result = load_RAG_pdf_pipeline()
+#     return jsonify({"status": "completed", "message": result})
+
+# @app.route('/resolve_conflicts', methods=['POST'])
+# @admin_required
+# def resolve_conflicts():
+#     # Get conflict resolutions from the frontend
+#     resolutions = request.get_json()
+    
+#     # Convert the form data format to our expected format
+#     formatted_resolutions = {}
+    
+#     for key, value in resolutions.items():
+#         if key.startswith('resolve_'):
+#             # Extract the document title from the form field name
+#             doc_title = key.replace('resolve_', '', 1)
+#             doc_title = doc_title.replace('%20', ' ')  # Handle URL encoding
+            
+#             # Determine if we should keep or skip based on the value
+#             if value.startswith('new'):
+#                 formatted_resolutions[doc_title] = "keep"
+#             else:
+#                 formatted_resolutions[doc_title] = "skip"
+    
+#     logger.info(f"Resolving conflicts with decisions: {formatted_resolutions}")
+    
+#     # Process the documents with the conflict resolutions
+#     result = load_RAG_pdf_pipeline(conflict_resolutions=formatted_resolutions)
+    
+#     return jsonify({"status": "completed", "message": result})
+
+
 
 
 @app.route('/')
