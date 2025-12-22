@@ -1407,6 +1407,24 @@ select.form-control {
   margin: 0;
 }
 
+.loading-close-btn {
+  position: absolute;
+  top: var(--space-16);
+  right: var(--space-16);
+  background: none;
+  border: none;
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  padding: var(--space-4);
+  border-radius: var(--radius-sm);
+  transition: background var(--duration-normal);
+}
+
+.loading-close-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
 /* Modal (user suspendingg)*/
 .modal {
   position: fixed;
