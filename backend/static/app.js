@@ -689,10 +689,26 @@ function loadSearchHistory() {
     `).join('');
 }
 
-function loadReport(reportId) {
-    const report = AppState.searchHistory.find(r => r.report_id === reportId);
+async function loadReport(reportId) {
+    let report = AppState.searchHistory.find(r => r.report_id === reportId);
     if (report) {
+        // Check if it's a full report (has detailed_findings)
+        if (report.detailed_findings) {
         displayReport(report);
+        } else {
+            // Load full report
+            const fullReport = await getReport(reportId);
+            if (fullReport.success) {
+                // Update in searchHistory
+                const index = AppState.searchHistory.findIndex(r => r.report_id === reportId);
+                if (index !== -1) {
+                    AppState.searchHistory[index] = fullReport.report;
+                }
+                displayReport(fullReport.report);
+            } else {
+                showNotification('Failed to load report', 'error');
+            }
+        }
     }
 }
 
@@ -1388,13 +1404,15 @@ document.addEventListener('DOMContentLoaded', function() {
 async function reloadSearchHistory() {
     const response = await getHistory();
     if (response.success) {
-        // For each history item, get the report details
-        const reports = [];
-        for (const hist of response.history) {
-            const rep = await getReport(hist.report_id);
-            if (rep.success) reports.push(rep.report);
+        // Load only the first report fully, keep others as summaries
+        AppState.searchHistory = response.history;
+        if (response.history.length > 0) {
+            const firstReport = await getReport(response.history[0].report_id);
+            if (firstReport.success) {
+                // Replace the first item with full report
+                AppState.searchHistory[0] = firstReport.report;
+            }
         }
-        AppState.searchHistory = reports;
         loadSearchHistory();
     }
 }
