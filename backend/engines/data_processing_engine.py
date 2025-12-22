@@ -1,10 +1,11 @@
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from transformers import pipeline
 from sentence_transformers import SentenceTransformer, util
 from rapidfuzz import fuzz
 
-from backend.models import InformationPiece, InformationCategory, DiscoverSource
+
+from backend.models import InformationPiece, InformationCategory, DiscoverSource, User, SearchHistory
 from backend.utils.config import Config
 
 
@@ -26,7 +27,7 @@ class DataProcessingEngine:
             cls._instance._initialized = False
         return cls._instance
 
-    def __init__(self):
+    def __init__(self, db):
         if self._initialized:
             return
             
@@ -36,8 +37,13 @@ class DataProcessingEngine:
         print("[INIT] Loading Semantic Model...")
         self.semantic_model = SentenceTransformer(Config.SEMANTIC_MODEL)
         
+        self.db = db
+        
         self.categories_cache = {}
         self._initialized = True
+        
+        
+    # =============== Public API ===============
 
     def process_raw_data(self, data_list, report_id, report_query, db):
         """
@@ -45,7 +51,7 @@ class DataProcessingEngine:
         """
         processed_pieces = []
         
-        # We use a dictionary {canonized_key: piece_object} for intelligent merging
+        # dictionary {canonized_key: piece_object} for intelligent merging
         # key format: "Category:LowerCaseContent"
         local_cache = {} 
         
@@ -130,6 +136,65 @@ class DataProcessingEngine:
                 
         db.session.commit()
         return processed_pieces
+    
+    # detect misusers (on user request)
+    def get_local_misuse_score(self, user_id, current_query):
+        user = self.db.session.query(User).get(user_id)
+        if not user: return 0.0
+        
+        u1 = (user.name or "").lower().strip()
+        u2 = (user.email.split('@')[0] if user.email else "").lower().strip()
+        
+        # extract Entities
+        ner_results = self.ner_pipeline(current_query, grouped_entities=True)
+        r_words = re.findall(r'\b[A-Z][a-z]+\b', current_query)
+        ignored = {'Report', 'Search', 'Find', 'Who', 'Where', 'When', 'The'}
+        
+        # refine and canonize
+        candidates = {}
+        for ent in ner_results:
+            if ent['entity_group'] == 'PER':
+                candidates[ent['word'].replace("##", "").strip()] = True
+        for word in r_words:
+            if word not in ignored:
+                candidates[word.strip()] = True
+
+        if not candidates:
+            return 0.0
+
+        ratios = []
+        for val_text in candidates.keys():
+            v_low = val_text.lower()
+            
+            # Immediate Substring Match
+            # If "Andrii" is in "Andrii Matsevytyi" -> 0.0 misuse
+            if (u1 and (v_low in u1 or u1 in v_low)) or (u2 and (v_low in u2 or u2 in v_low)):
+                ratios.append(0.0)
+                continue
+                
+            # Token Sort Ratio (Handles Name Swaps) 
+            # "Matsevytyi Andrii" vs "Andrii Matsevytyi" will score ~100
+            sim1 = fuzz.token_sort_ratio(u1, v_low) / 100.0 if u1 else 0
+            sim2 = fuzz.token_sort_ratio(u2, v_low) / 100.0 if u2 else 0
+            
+            # Token Set Ratio (Handles partial/nicknames)
+            # Useful if user.name is "Andrii Matsevytyi" but search is just "Andrii"
+            set_sim1 = fuzz.token_set_ratio(u1, v_low) / 100.0 if u1 else 0
+            set_sim2 = fuzz.token_set_ratio(u2, v_low) / 100.0 if u2 else 0
+            
+            best_sim = max(sim1, sim2, set_sim1, set_sim2)
+            
+            print(f"MISUSE CHECK: '{val_text}' vs '{u1}' | Score: {1.0 - best_sim:.2f}")
+            ratios.append(1.0 - best_sim)
+        
+        if not ratios:
+            return 0.0
+
+        local_score = sum(ratios) / len(ratios)
+
+        return min(1.0, max(0.0, local_score))
+    
+    # =============== Helper Functions ===============
 
     def _normalize_inputs(self, data):
         normalized = []
@@ -471,4 +536,5 @@ class DataProcessingEngine:
         return piece
 
 # Singleton Instance
-data_processing_engine = DataProcessingEngine()
+from models import db
+data_processing_engine = DataProcessingEngine(db)

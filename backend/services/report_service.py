@@ -1,6 +1,8 @@
 from backend.models import User, Report, SearchHistory, InformationPiece,  DiscoverSource, InformationCategory
 from backend.services.data_collection_service import DataCollectionService
 
+from sqlalchemy import func
+
 from backend.engines.risk_assessment_engine import RiskAssessmentEngine
 from backend.engines.data_processing_engine import data_processing_engine
 import math
@@ -98,6 +100,26 @@ class ReportService:
         """Initialize a new report and save it to database"""
         report_id = f"RPT-{datetime.now().strftime('%Y%m%d')}-{random.randint(1000, 9999)}"
         
+        # check for misuse score
+        local_misuse_score = data_processing_engine.get_local_misuse_score(user_id=user_id, current_query=query)
+        
+        # update user
+        # add local misusse calculation
+        # update local misuse score based on searches and last history serches
+        
+        user = self.db.session.query(User).get(user_id)
+        if user:
+            past_searches_count = self.db.session.query(func.count(SearchHistory.id))\
+                .filter(SearchHistory.user_id == user_id).scalar() or 0
+            
+            current_avg = user.average_misuse_score or 0.0
+            
+            # Formula: ((avg * N) + local) / (N + 1)
+            new_global_avg = ((current_avg * past_searches_count) + local_misuse_score) / (past_searches_count + 1)
+            
+            user.average_misuse_score = new_global_avg
+            print(f"[MISUSE] User {user.id}: Local={local_misuse_score:.2f}, Global={new_global_avg:.2f}")
+        
         # Create new Report record
         report = Report(
             report_id=report_id,
@@ -110,11 +132,9 @@ class ReportService:
         new_history_entry = SearchHistory(
             user_id=user_id,
             user_query=query,
-            report_id=report_id
+            report_id=report_id,
+            local_misuse_score=local_misuse_score
         )
-        
-        # add local misusse calculation
-        
         
         print("adding report to self.db with id ", report_id)
         self.db.session.add(report)
