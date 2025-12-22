@@ -24,6 +24,7 @@ import ssl
 # Import services
 from services import AuthService, ReportService, FacebookAuthService, ProfileService, AssistantService
 from backend.services.admin_service import AdminService
+from backend.engines.rag_engine import RagEngine
 
 
 
@@ -121,6 +122,7 @@ fb_auth_service = FacebookAuthService(db)
 
 profile_service = ProfileService(db)
 analytics_engine = AdminService(db)
+rag_engine = RagEngine()
 
 report_service = ReportService(db)
 assistant_service = AssistantService(db)
@@ -683,62 +685,18 @@ def health_check():
     """Health check endpoint"""
     return jsonify({'status': 'healthy', 'timestamp': datetime.utcnow().isoformat() + 'Z'})
 
-# @app.route('/admin', methods=['GET', 'POST'])
-# @admin_required
-# def admin():
-#     message = None
-#     if request.method == 'POST':
-#         try:
-#             message = prepare_new_RAG_pdf_pipeline()
-#             flash(message, 'success')
-#         except Exception as e:
-#             logger.error(f"Admin pipeline error: {str(e)}")
-#             flash(f"Failed to process documents: {str(e)}", 'danger')
-#     return render_template('admin.html', message=message)
+@app.route('/api/admin/documents', methods=['GET'])
+@jwt_required()
+@admin_required
+def list_documents():
+    """List all documents in the knowledge base"""
+    try:
+        documents = rag_engine.list_documents()
+        return jsonify({'success': True, 'documents': documents}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
 
-# @app.route('/run_pipeline')
-# @admin_required
-# def run_pipeline():
-#     # First check for conflicts
-#     conflicts = prepare_new_RAG_pdf_pipeline()
-    
-#     # Check if any conflicts were found
-#     has_conflicts = any(doc.get('status') == 'conflicts_found' for doc in conflicts.values())
-    
-#     if has_conflicts:
-#         return jsonify({"conflicts": conflicts})
-    
-#     # If no conflicts, proceed with embedding all documents
-#     result = load_RAG_pdf_pipeline()
-#     return jsonify({"status": "completed", "message": result})
 
-# @app.route('/resolve_conflicts', methods=['POST'])
-# @admin_required
-# def resolve_conflicts():
-#     # Get conflict resolutions from the frontend
-#     resolutions = request.get_json()
-    
-#     # Convert the form data format to our expected format
-#     formatted_resolutions = {}
-    
-#     for key, value in resolutions.items():
-#         if key.startswith('resolve_'):
-#             # Extract the document title from the form field name
-#             doc_title = key.replace('resolve_', '', 1)
-#             doc_title = doc_title.replace('%20', ' ')  # Handle URL encoding
-            
-#             # Determine if we should keep or skip based on the value
-#             if value.startswith('new'):
-#                 formatted_resolutions[doc_title] = "keep"
-#             else:
-#                 formatted_resolutions[doc_title] = "skip"
-    
-#     logger.info(f"Resolving conflicts with decisions: {formatted_resolutions}")
-    
-#     # Process the documents with the conflict resolutions
-#     result = load_RAG_pdf_pipeline(conflict_resolutions=formatted_resolutions)
-    
-#     return jsonify({"status": "completed", "message": result})
 
 
 
