@@ -190,7 +190,7 @@ function truncateText(text, maxLen = 100) {
 async function sendChatMessage() {
     const input = document.getElementById('chat-input');
     if (!input) return;
-    const text = input.value.trim();
+    const text = DOMPurify.sanitize(input.value.trim());
     if (!text) return;
     // ensure session
     if (!AppState.chat.activeSessionId) {
@@ -446,10 +446,10 @@ function validateRegistrationForm() {
         return false;
     }
     
-    const name = nameField.value.trim();
-    const email = emailField.value.trim();
-    const password = passwordField.value;
-    const confirmPassword = confirmPasswordField.value;
+    const name = DOMPurify.sanitize(nameField.value.trim());
+    const email = DOMPurify.sanitize(emailField.value.trim());
+    const password = DOMPurify.sanitize(passwordField.value);
+    const confirmPassword = DOMPurify.sanitize(confirmPasswordField.value);
     
     let isValid = true;
     
@@ -496,9 +496,9 @@ function validatePasswordChangeForm() {
         return false;
     }
     
-    const current_password = current_password_field.value;
-    const new_password = new_password_field.value;
-    const confirm_new_password = confirm_new_password_field.value;
+    const current_password = DOMPurify.sanitize(current_password_field.value);
+    const new_password = DOMPurify.sanitize(new_password_field.value);
+    const confirm_new_password = DOMPurify.sanitize(confirm_new_password_field.value);
     
     let isValid = true;
 
@@ -621,8 +621,8 @@ function validateLoginForm() {
         return false;
     }
     
-    const email = emailField.value.trim();
-    const password = passwordField.value;
+    const email = DOMPurify.sanitize(emailField.value.trim());
+    const password = DOMPurify.sanitize(passwordField.value);
     
     let isValid = true;
     
@@ -864,9 +864,9 @@ document.addEventListener('DOMContentLoaded', function() {
             setButtonLoading(submitBtn, true);
             
             const formData = {
-                name: document.getElementById('register-name').value.trim(),
-                email: document.getElementById('register-email').value.trim(),
-                password: document.getElementById('register-password').value
+                name: DOMPurify.sanitize(document.getElementById('register-name').value.trim()),
+                email: DOMPurify.sanitize(document.getElementById('register-email').value.trim()),
+                password: DOMPurify.sanitize(document.getElementById('register-password').value)
             };
             
             const response = await registerUser(formData);
@@ -915,8 +915,8 @@ document.addEventListener('DOMContentLoaded', function() {
             setButtonLoading(submitBtn, true);
             
             const formData = {
-                email: document.getElementById('login-email').value.trim(),
-                password: document.getElementById('login-password').value
+                email: DOMPurify.sanitize(document.getElementById('login-email').value.trim()),
+                password: DOMPurify.sanitize(document.getElementById('login-password').value)
             };
             
             const response = await loginUser(formData);
@@ -969,8 +969,8 @@ document.addEventListener('DOMContentLoaded', function() {
             setButtonLoading(submitBtn, true);
             
             const formData = {
-                current_password: document.getElementById('current-password').value.trim(),
-                new_password: document.getElementById('new-password').value.trim()
+                current_password: DOMPurify.sanitize(document.getElementById('current-password').value.trim()),
+                new_password: DOMPurify.sanitize(document.getElementById('new-password').value.trim())
             };
             
             const response = await changePassword(formData);
@@ -995,10 +995,10 @@ document.addEventListener('DOMContentLoaded', function() {
         searchForm.addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            const queryField = document.getElementById('search-query');
+            const queryField = document.getElementById('search-query')
             if (!queryField) return;
             
-            const query = queryField.value.trim();
+            const query = DOMPurify.sanitize(queryField.value.trim());
             if (!query) {
                 showNotification('Please enter a search query', 'error');
                 return;
@@ -1071,7 +1071,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const textarea = document.getElementById('cookies-json');
         const status = document.getElementById('facebook-cookies-status');
         try {
-            const cookiesObj = JSON.parse(textarea.value);
+            const cookiesObj = JSON.parse(DOMPurify.sanitize(textarea.value));
             postFacebookCookies(cookiesObj);
         } catch (err) {
             status.textContent = "Invalid JSON format";
@@ -1082,11 +1082,11 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('save-cookies-btn').addEventListener('click', function() {
         const status = document.getElementById('facebook-cookies-status');
         // Read all input fields
-        const c_user = document.getElementById('cookie-c-user').value.trim();
-        const xs    = document.getElementById('cookie-xs').value.trim();
-        const datr  = document.getElementById('cookie-datr').value.trim();
-        const fr    = document.getElementById('cookie-fr').value.trim();
-        const sb  = document.getElementById('cookie-sb').value.trim();
+        const c_user = DOMPurify.sanitize(document.getElementById('cookie-c-user').value.trim());
+        const xs    = DOMPurify.sanitize(document.getElementById('cookie-xs').value.trim());
+        const datr  = DOMPurify.sanitize(document.getElementById('cookie-datr').value.trim());
+        const fr    = DOMPurify.sanitize(document.getElementById('cookie-fr').value.trim());
+        const sb  = DOMPurify.sanitize(document.getElementById('cookie-sb').value.trim());
 
         // Build cookies object (only add fields if non-empty)
         let cookiesObj = {};
@@ -1110,8 +1110,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
-            const login = document.getElementById('fb-login')?.value.trim();
-            const password = document.getElementById('fb-password')?.value || '';
+            const login = DOMPurify.sanitize(document.getElementById('fb-login')?.value.trim());
+            const password = DOMPurify.sanitize(document.getElementById('fb-password')?.value || '');
             const headless = !!document.getElementById('fb-headless')?.checked;
 
             if (!login || !password) {
@@ -1137,8 +1137,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     await getFacebookCookiesStatus();
                     setTimeout(() => showPage('dashboard'), 500);
                     // Clear Facebook login fields
-                    document.getElementById('fb-login').value = '';
-                    document.getElementById('fb-password').value = '';
+                    document.getElementById('fb-login').textContent = '';
+                    document.getElementById('fb-password').textContent = '';
                 } else {
                     const msg = data.message || data.error || 'Login failed';
                     showNotification(msg, 'error');
@@ -1151,7 +1151,7 @@ document.addEventListener('DOMContentLoaded', function() {
             } finally {
                 setButtonLoading(fbLoginBtn, false);
                 // Clear password field for safety
-                try { document.getElementById('fb-password').value = ''; } catch (e) {}
+                try { document.getElementById('fb-password').textContent = ''; } catch (e) {}
             }
         });
     }
@@ -1170,8 +1170,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const loginInput = document.getElementById('fb-login');
             const passInput = document.getElementById('fb-password');
             const headlessInput = document.getElementById('fb-headless');
-            const login = loginInput ? loginInput.value.trim() : '';
-            const password = passInput ? passInput.value : '';
+            const login = loginInput ? loginInput.textContent.trim() : '';
+            const password = passInput ? passInput.textContent : '';
             const headless = headlessInput ? !!headlessInput.checked : false;
 
             if (!login || !password) {
@@ -1347,7 +1347,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const confirmSuspendBtn = document.getElementById('confirm-suspend-btn');
     if (confirmSuspendBtn) confirmSuspendBtn.addEventListener('click', async () => {
         const userId = document.getElementById('misuser-modal').dataset.userId;
-        const reason = document.getElementById('suspend-reason').value.trim();
+        const reason = DOMPurify.sanitize(document.getElementById('suspend-reason').value.trim());
+        console.log('Suspension reason:', reason);
         if (!reason) {
             showNotification('Please provide a reason for suspension', 'error');
             return;
@@ -1649,6 +1650,7 @@ async function suspendUser(userId, reason) {
             showNotification('User suspended successfully', 'success');
             document.getElementById('misuser-modal').classList.add('hidden');
             loadPotentialMisusers(); // Refresh list
+            loadSuspendedUsers();
         } else {
             showNotification(data.message || 'Failed to suspend user', 'error');
         }
@@ -1745,6 +1747,7 @@ async function reactivateSuspendedUser(userId) {
         if (data.success) {
             showNotification('User reactivated successfully', 'success');
             loadSuspendedUsers(); // Refresh list
+            loadPotentialMisusers();
         } else {
             showNotification(data.message || 'Failed to reactivate user', 'error');
         }
