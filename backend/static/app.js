@@ -1112,6 +1112,55 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
+    // Delete account
+    const deleteAccountBtn = document.getElementById('delete-account-btn');
+    if (deleteAccountBtn) deleteAccountBtn.addEventListener('click', () => {
+        document.getElementById('delete-account-modal').classList.remove('hidden');
+    });
+
+    const deleteAccountModalClose = document.getElementById('delete-account-modal-close');
+    if (deleteAccountModalClose) deleteAccountModalClose.addEventListener('click', () => {
+        document.getElementById('delete-account-modal').classList.add('hidden');
+    });
+
+    const cancelDeleteAccountBtn = document.getElementById('cancel-delete-account-btn');
+    if (cancelDeleteAccountBtn) cancelDeleteAccountBtn.addEventListener('click', () => {
+        document.getElementById('delete-account-modal').classList.add('hidden');
+    });
+
+    const confirmDeleteAccountBtn = document.getElementById('confirm-delete-account-btn');
+    if (confirmDeleteAccountBtn) confirmDeleteAccountBtn.addEventListener('click', async () => {
+        const password = DOMPurify.sanitize(document.getElementById('delete-password').value.trim());
+        if (!password) {
+            showNotification('Please enter your password', 'error');
+            return;
+        }
+        try {
+            const res = await fetch('/api/settings/delete-account', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + AppState.jwt
+                },
+                body: JSON.stringify({
+                    password: password,
+                    full_name: AppState.currentUser.name
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showNotification('Account deleted successfully', 'success');
+                logout();
+            } else {
+                showNotification(data.message || 'Failed to delete account', 'error');
+            }
+        } catch (e) {
+            console.error('Delete account failed', e);
+            showNotification('Failed to delete account', 'error');
+        }
+        document.getElementById('delete-account-modal').classList.add('hidden');
+    });
+
     // cookies
     document.getElementById('paste-cookies-btn').addEventListener('click', function() {
         const textarea = document.getElementById('cookies-json');

@@ -489,13 +489,34 @@
 
                 <div class="danger-actions">
                     <button type="button" class="btn btn--danger" id="delete-account-btn">
-                        🗑️ Delete Account & All Data
+                    Delete Account & All Data
                     </button> <br>
                     <p class="small-text">Permanently delete your account, search history, cookies, and configurations.</p> 
                 </div>
             </section>
 
                   </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Delete Account Modal -->
+        <div id="delete-account-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Delete Account</h2>
+                    <button class="modal-close" id="delete-account-modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p>This action is irreversible. Your account, search history, cookies, and all associated data will be permanently deleted.</p>
+                    <div class="form-group">
+                        <label for="delete-password">Enter your password to confirm:</label>
+                        <input type="password" id="delete-password" class="form-control" required>
+                    </div>
+                    <div class="modal-actions">
+                        <button class="btn btn--danger" id="confirm-delete-account-btn">Delete Account</button>
+                        <button class="btn btn--outline" id="cancel-delete-account-btn">Cancel</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -650,26 +671,6 @@
                         </div>
                     </div>
 
-                    <!-- Delete Account Modal -->
-                    <div id="delete-account-modal" class="modal hidden">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h2>Delete Account</h2>
-                                <button class="modal-close" id="delete-account-modal-close">&times;</button>
-                            </div>
-                            <div class="modal-body">
-                                <p>⚠️ This action is irreversible. Your account, search history, cookies, and all associated data will be permanently deleted.</p>
-                                <div class="form-group">
-                                    <label for="delete-password">Enter your password to confirm:</label>
-                                    <input type="password" id="delete-password" class="form-control" required>
-                                </div>
-                                <div class="modal-actions">
-                                    <button class="btn btn--danger" id="confirm-delete-account-btn">Delete Account</button>
-                                    <button class="btn btn--outline" id="cancel-delete-account-btn">Cancel</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
         </section>
