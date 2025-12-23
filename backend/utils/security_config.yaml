@@ -1,0 +1,27 @@
+# LLM Security Configuration
+
+# Dangerous patterns to detect in user inputs
+dangerous_patterns:
+  - system:\s*
+  - assistant:\s*
+  - user:\s*
+  - Human:\s*
+  - AI:\s*
+  - \$$INST\$$
+  - \$$/INST\$$
+  - <\s*instructions\s*>
+  - "\\{\\{[^}]*\\}\\}"  # Template injection pattern
+
+  # Rate limiting configuration
+rate_limiting:
+  max_requests_per_minute: 20
+  max_tokens_per_minute: 10000
+
+# Sensitive information patterns
+sensitive_patterns:
+  - pattern: '\b(?:\d[ -]*?){13,16}\b'
+    name: "credit_card"
+  - pattern: '\b\d{11}\b'
+    name: "personal_code_lt"
+  - pattern: '\bLT\d{18}\b'
+    name: "iban_lt"

@@ -2,15 +2,13 @@ import re
 import json
 import hashlib
 from typing import Dict, List, Any, Optional, Union
-import logging
 from .prompt_sanitizer import PromptSanitizer
 
-logger = logging.getLogger("SECURITY.LLM")
 
 class LLMSecurityManager:
     """Manages security for LLM interactions."""
     
-    def __init__(self, config_path: str = "app/security/security_config.yaml"):
+    def __init__(self, config_path: str = "/backend/utils/security_config.yaml"):
         """Initialize security components."""
         self.prompt_sanitizer = PromptSanitizer()
         self.request_history = {}
@@ -25,7 +23,7 @@ class LLMSecurityManager:
                     self.sensitive_patterns.extend(config["sensitive_patterns"])
                     
         except Exception as e:
-            logger.warning(f"Could not load security config: {e}")
+            print(f"Could not load security config: {e}")
         
     def secure_prompt(self, user_input: str) -> Dict[str, Any]:
         """
@@ -79,7 +77,7 @@ class LLMSecurityManager:
             
         # Log security events
         if not result["is_safe"]:
-            logger.warning(f"Security issue detected: {json.dumps(result['security_metadata'])}")
+            print(f"Security issue detected: {json.dumps(result['security_metadata'])}")
             
         return result
     
@@ -104,7 +102,7 @@ class LLMSecurityManager:
                 llm_response, 
                 sensitive_info["detected_items"]
             )
-            logger.warning(f"Sensitive information detected in LLM response and redacted")
+            print(f"Sensitive information detected in LLM response and redacted")
         
         return {
             "processed_response": processed_response,

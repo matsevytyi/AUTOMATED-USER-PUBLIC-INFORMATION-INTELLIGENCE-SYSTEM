@@ -1,14 +1,11 @@
 import re
 import json
 from typing import Dict, List, Optional, Union, Any
-import logging
-
-logger = logging.getLogger("SECURITY.LLM")
 
 class PromptSanitizer:
     """Sanitizes user inputs to prevent prompt injection attacks."""
     
-    def __init__(self, config_path: str = "app/security/security_config.yaml"):
+    def __init__(self, config_path: str = "/backend/utils/security_config.yaml"):
         """Initialize with security configuration."""
         self.dangerous_patterns = [
             
@@ -63,7 +60,7 @@ class PromptSanitizer:
                 if config and "dangerous_patterns" in config:
                     self.dangerous_patterns.extend(config["dangerous_patterns"])
         except Exception as e:
-            logger.warning(f"Could not load security config: {e}")
+            print(f"Could not load security config: {e}")
     
     def sanitize_input(self, user_input: str) -> Dict[str, Any]:
         """
@@ -107,7 +104,7 @@ class PromptSanitizer:
         
         # Log if unsafe content was detected
         if not is_safe:
-            logger.warning(f"Potentially unsafe input detected: {json.dumps(detected_patterns)}")
+            print(f"Potentially unsafe input detected: {json.dumps(detected_patterns)}")
         
         return {
             "sanitized_input": sanitized_input,
