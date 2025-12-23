@@ -1,0 +1,10 @@
+*/__pycache__/
+*.pyc
+*.pyo
+*.bin
+*.pickle
+app/user_uploads/
+*.png
+*.md
+*.txt
+!requirements.txt
