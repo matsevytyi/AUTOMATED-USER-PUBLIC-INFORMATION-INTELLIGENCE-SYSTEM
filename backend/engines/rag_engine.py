@@ -1,4 +1,5 @@
-from backend.wrappers import vector_storage_wrapper, S3_wrapper
+from backend.wrappers import vector_storage_wrapper, S3_wrapper, llm_wrapper
+from backend.utils.llm_security import LLMSecurityManager
 from langchain_community.document_loaders import PyPDFLoader
 from langchain.schema import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -18,6 +19,9 @@ class RagEngine:
         # Initialize vector storage
         self.vector_store = vector_storage_wrapper.VectorStorage(table_name="documents_collection", k=5)
         
+        # Initialize security
+        self.security_manager = LLMSecurityManager()
+        
         # Configuration
         self.DATA_PATH = os.path.join(os.path.dirname(__file__), '../data/rag-uploads')
         self.SIMILARITY_THRESHOLD = 0.7
@@ -33,8 +37,53 @@ class RagEngine:
         # Ensure directories exist
         os.makedirs(self.DATA_PATH, exist_ok=True)
     
-    def get_answer(self, user_msg, scope, datapiece_ids, session_id, provider):
-        return
+    def get_answer_with_rag(self, user_msg, system_prompt, provider='groq', fallback=None):
+        """Get answer with RAG knowledge retrieval and LLM call"""
+        
+        # Sanitize user input
+        security_result = self.security_manager.secure_prompt(user_msg)
+        if security_result['should_block']:
+            return "I'm sorry, but I cannot process this request due to security concerns.", []
+        
+        sanitized_user_msg = security_result['processed_input']
+        
+        # Retrieve relevant knowledge from vector store
+        knowledge_results = self.vector_store.invoke(sanitized_user_msg)
+        collected_knowledge = ""
+        if knowledge_results:
+            # Format the knowledge
+            knowledge_texts = []
+            for doc in knowledge_results:
+                if hasattr(doc, 'page_content'):
+                    knowledge_texts.append(doc.page_content)
+                elif isinstance(doc, dict) and 'content' in doc:
+                    knowledge_texts.append(doc['content'])
+                elif isinstance(doc, str):
+                    knowledge_texts.append(doc)
+            
+            collected_knowledge = "\n\n".join(knowledge_texts)
+        
+        # Append knowledge to system prompt
+        if collected_knowledge:
+            enhanced_system_prompt = system_prompt + f"\n\nKnowledge: {collected_knowledge}"
+        else:
+            enhanced_system_prompt = system_prompt
+        
+        # Prepare messages for LLM
+        messages = [
+            {'role': 'system', 'content': enhanced_system_prompt},
+            {'role': 'user', 'content': sanitized_user_msg}
+        ]
+        
+        # Call LLM
+        llm_result = llm_wrapper.chat(provider, messages, [], fallback)
+        reply = llm_result.get('reply', 'No response from LLM')
+        
+        # Sanitize response
+        response_security = self.security_manager.secure_response(reply)
+        sanitized_reply = response_security['processed_response']
+        
+        return sanitized_reply, []  # No sources for now
     
     def _collect_DB_context(self, session_id):
         return
