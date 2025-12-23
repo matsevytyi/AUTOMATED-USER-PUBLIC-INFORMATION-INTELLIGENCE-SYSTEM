@@ -692,7 +692,7 @@ function loadSearchHistory() {
         <div class="history-item" onclick="loadReport('${item.report_id}')">
             <div class="history-item-header">
                 <div class="history-item-query">${item.query}</div>
-                <div class="history-item-date">${new Date(item.generated_at).toLocaleDateString()}</div>
+                <div class="history-item-date">${new Date(item.created_at ?? item.generated_at).toLocaleDateString()}</div>
             </div>
             <div class="history-item-summary">Report ID: ${item.report_id}</div>
         </div>
