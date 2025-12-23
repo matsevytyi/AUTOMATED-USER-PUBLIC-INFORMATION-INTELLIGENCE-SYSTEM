@@ -118,6 +118,12 @@ def create_app():
 
 app = create_app()
 
+# record when the application started (used by health endpoint)
+try:
+    app.start_time = datetime.utcnow()
+except Exception:
+    app.start_time = None
+
 # Initialize services
 auth_service = AuthService(db)
 fb_auth_service = FacebookAuthService(db)
@@ -692,8 +698,44 @@ def reactivate_user(user_id):
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
-    """Health check endpoint"""
-    return jsonify({'status': 'healthy', 'timestamp': datetime.utcnow().isoformat() + 'Z'})
+    """Health check endpoint for lightweight monitoring.
+
+    Returns overall status and basic component checks. Designed to be cheap
+    and suitable for container health probes.
+    """
+    checks = {}
+    overall_ok = True
+
+    # DB check 
+    try:
+        user = db.session.query(User).first()
+        if user: 
+            checks['db'] = 'ok'
+            overall_ok = True
+        else: 
+            checks['db'] = 'empty'
+            overall_ok = False
+    except Exception as e:
+        checks['db'] = f'error: {str(e)}'
+        overall_ok = False
+
+    # S3 check
+    try:
+        size = get_total_size_in_s3()
+        checks['s3'] = 'ok'
+        checks['s3_total_bytes'] = int(size or 0)
+    except Exception as e:
+        checks['s3'] = f'error: {str(e)}'
+        overall_ok = False
+
+    status = 'healthy' if overall_ok else 'bad'
+
+    return jsonify({
+        'status': status,
+        'timestamp': datetime.utcnow().isoformat() + 'Z',
+        'started_at': (app.start_time.isoformat() + 'Z') if getattr(app, 'start_time', None) else None,
+        'checks': checks
+    }), (200 if overall_ok else 503)
 
 @app.route('/api/admin/documents', methods=['GET'])
 @jwt_required()
