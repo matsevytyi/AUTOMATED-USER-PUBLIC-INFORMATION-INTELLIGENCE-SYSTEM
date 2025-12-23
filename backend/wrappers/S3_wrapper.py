@@ -69,6 +69,23 @@ def list_files_in_s3():
         print(f"Error listing files in S3: {e}")
         return []
 
+def get_total_size_in_s3():
+    """Get total size of all files in S3 bucket/prefix in bytes"""
+    try:
+        response = s3_client.list_objects_v2(
+            Bucket=S3_BUCKET_NAME,
+            Prefix=S3_PREFIX
+        )
+        
+        total_size = 0
+        if 'Contents' in response:
+            for obj in response['Contents']:
+                total_size += obj['Size']
+        return total_size
+    except ClientError as e:
+        print(f"Error getting total size in S3: {e}")
+        return 0
+
 def delete_file_from_s3(s3_key):
     """Delete a file from S3 bucket"""
     try:

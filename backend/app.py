@@ -19,6 +19,8 @@ from backend.wrappers.llm_wrapper import chat
 import bleach
 from functools import wraps
 
+from backend.wrappers.S3_wrapper import get_total_size_in_s3
+
 import ssl
 
 # Import services
@@ -707,8 +709,21 @@ def upload_document():
             return jsonify({'success': False, 'message': 'No file provided'}), 400
         
         file = request.files['file']
-        if file.filename == '' or not file.filename.endswith('.pdf'):
+        if file.filename == '' or not file.filename.lower().endswith('.pdf'):
             return jsonify({'success': False, 'message': 'Invalid file. Only PDF files are allowed.'}), 400
+        
+        # Check file size
+        file.seek(0, os.SEEK_END)
+        file_size = file.tell()
+        file.seek(0)  # Reset file pointer
+        
+        # Get current total size in S3
+        current_total_size = get_total_size_in_s3()
+        
+        # Check if total size would exceed 45MB (45 * 1024 * 1024 bytes)
+        max_total_size = 45 * 1024 * 1024
+        if current_total_size + file_size > max_total_size:
+            return jsonify({'success': False, 'message': f'Upload would exceed storage limit. Current usage: {current_total_size / (1024*1024):.2f}MB, File size: {file_size / (1024*1024):.2f}MB, Limit: 45MB'}), 400
         
         # Save file to upload directory
         filename = file.filename
