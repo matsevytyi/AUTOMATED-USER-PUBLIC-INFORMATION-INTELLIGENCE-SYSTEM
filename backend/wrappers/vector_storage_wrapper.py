@@ -25,7 +25,7 @@ class VectorStorage():
         self.k = k
         self.table_name = table_name
         
-        self.PG_HOST = Config.DB_HOST  #"your-postgres-endpoint.rds.amazonaws.com"
+        self.PG_HOST = Config.DB_HOST
         self.PG_PORT = Config.DB_PORT
         self.PG_DATABASE = Config.DB_NAME 
         self.PG_USER = Config.DB_USER 
@@ -146,9 +146,7 @@ class VectorStorage():
         cursor.close()
         conn.close()
         
-            
-        print(f"Passed the next query to postgres: {query_text}")
-        print(f"Obtained in total results: {len(results)}")
+        print(f"RAG found total: {len(results)}")
         
         return results
 

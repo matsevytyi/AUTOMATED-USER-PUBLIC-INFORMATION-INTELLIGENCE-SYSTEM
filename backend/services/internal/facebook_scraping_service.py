@@ -43,7 +43,7 @@ class FacebookScrapingService:
             self.cookies = self._load_cookies_from_object(cookies)
             
         try:
-            facebook_data = self.search_request(query=search_request, amount_of_posts=100)
+            facebook_data = self.search_request(query=search_request, amount_of_posts=20)
             results.put(facebook_data)
         except Exception as e:
             print(f"Error in search thread: {e}")
@@ -61,7 +61,7 @@ class FacebookScrapingService:
             user_profiles = user_profiles[:profiles_max]
             for profile in user_profiles:
                 print("Scraping Facebook profile:", profile)
-                profile_data = self.search_profile(profile, amount_of_posts=100)
+                profile_data = self.search_profile(profile, amount_of_posts=20)
                 results.put(profile_data)
         except Exception as e:
             print(f"Error in profile thread: {e}")
