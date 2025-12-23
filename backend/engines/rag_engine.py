@@ -164,3 +164,14 @@ class RagEngine:
         s3_files = S3_wrapper.list_files_in_s3()
         return [{"filename": os.path.basename(f), "s3_key": f} for f in s3_files]
     
+    def delete_document(self, document_name):
+        """Delete a document from both vector store and S3"""
+        # Delete from vector store
+        deleted_count = self.vector_store.delete_documents_by_metadata({"title": document_name})
+        
+        # Delete from S3 - s3_key is the filename with .pdf
+        s3_key = document_name if document_name.endswith('.pdf') else f"{document_name}.pdf"
+        S3_wrapper.delete_file_from_s3(s3_key)
+        
+        return f"Deleted {deleted_count} chunks for document '{document_name}' from vector store and removed from S3."
+    

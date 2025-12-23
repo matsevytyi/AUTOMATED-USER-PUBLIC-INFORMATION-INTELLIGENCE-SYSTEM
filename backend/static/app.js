@@ -329,7 +329,6 @@ function updateNavigation() {
         if (loginBtn) loginBtn.classList.add('hidden');
         if (registerBtn) registerBtn.classList.add('hidden');
         if (logoutBtn) logoutBtn.classList.remove('hidden');
-        // Hide dashboard button for admins
 
         const navbar = document.getElementById('general-navbar');
 
@@ -833,6 +832,12 @@ function logout() {
     if (reportSection) {
         reportSection.classList.add('hidden');
     }
+
+    const navbar = document.getElementById('general-navbar');
+
+    if (navbar) {
+        navbar.classList.remove('hidden');
+        }
     
     // Clear form fields
     const formsToClear = ['register-form', 'login-form', 'search-form', 'update-password-form'];
