@@ -90,7 +90,7 @@ class AuthService:
             raise ValueError('Invalid email or password.')
         
         if user.is_deactivated:
-            raise ValueError('Your account has been deactivated.')
+            raise ValueError('Your account has been deactivated. Contact support@profolio.com')
         
         # Create access token
         access_token = create_access_token(identity=email)
@@ -147,6 +147,49 @@ class AuthService:
             'success': True,
             'message': 'Password changed successfully.'
         }
+        
+    def delete_account(self, password, full_name):
+        """
+        Delete user account and related data
+        
+        Args:
+            password: User's password (plain text)
+            full_name: User's full name
+            
+        Returns:
+            dict: Success response
+            
+        Raises:
+            ValueError: If validation fails or password incorrect
+        """
+        try:
+            user = User.query.filter_by(name=full_name).first()
+            if not user:
+                return {
+                    'success': False,
+                    'message': 'User not found.'
+                }
+            
+            #Verify password
+            if not self._verify_password(password, user.password_hash):
+                return {
+                    'success': False,
+                    'message': 'Password incorrect.'
+                }
+        
+
+            self.db.session.delete(user)
+            self.db.session.commit()
+            return {
+                'success': True,
+                'message': 'Account deleted successfully.'
+            }
+        except Exception as e:
+            self.db.session.rollback()
+            return {
+                'success': False,
+                'message': 'Failed to delete account.'
+            }
     
     def _hash_password(self, password):
         """Hash a password using bcrypt"""

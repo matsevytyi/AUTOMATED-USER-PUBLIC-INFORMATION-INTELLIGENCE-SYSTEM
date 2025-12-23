@@ -567,9 +567,17 @@ def delete_account():
     password = data.get('password')
     full_name = data.get('full_name')
     
-    # TODO: Implement actual deletion logic with password verification
-    print(f"\n[ACCOUNT DELETION] User '{full_name}' deleted at {datetime.utcnow()}")
-    print(f"[ACTION] Removing: user records, search history, cookies, LLM configs, chat data")
+    if not password:
+        return jsonify({'success': False, 'message': 'Password is required'}), 400
+    
+    if not full_name:
+        return jsonify({'success': False, 'message': 'Full name is required'}), 400
+    
+    try:
+        auth_service.delete_account(password, full_name)
+    except Exception as e:
+        print(f'Failed to delete account: {e}')
+        return jsonify({'success': False, 'message': 'Failed to delete account'}), 500
     
     return jsonify({'success': True, 'message': 'Account deleted'}), 200
 

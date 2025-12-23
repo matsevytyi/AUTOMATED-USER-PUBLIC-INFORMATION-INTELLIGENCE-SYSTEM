@@ -1135,6 +1135,7 @@ document.addEventListener('DOMContentLoaded', function() {
             showNotification('Please enter your password', 'error');
             return;
         }
+        setButtonLoading(confirmDeleteAccountBtn, true);
         try {
             const res = await fetch('/api/settings/delete-account', {
                 method: 'POST',
@@ -1149,7 +1150,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             const data = await res.json();
             if (data.success) {
-                showNotification('Account deleted successfully', 'success');
+                setButtonLoading(confirmDeleteAccountBtn, false);
                 logout();
             } else {
                 showNotification(data.message || 'Failed to delete account', 'error');
@@ -1158,6 +1159,7 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Delete account failed', e);
             showNotification('Failed to delete account', 'error');
         }
+        setButtonLoading(confirmDeleteAccountBtn, false);
         document.getElementById('delete-account-modal').classList.add('hidden');
     });
 

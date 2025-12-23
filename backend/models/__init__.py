@@ -21,13 +21,13 @@ class User(db.Model):
     deactivated_reason = db.Column(db.Text, nullable=True)
     
     # Relationships
-    reports = db.relationship('Report', backref='user', lazy=True)
-    searches = db.relationship('SearchHistory', backref='user', lazy=True, order_by='desc(SearchHistory.created_at)')
+    reports = db.relationship('Report', backref='user', cascade='all, delete-orphan', lazy=True)
+    searches = db.relationship('SearchHistory', backref='user', cascade='all, delete-orphan', lazy=True, order_by='desc(SearchHistory.created_at)')
 
 class Report(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     report_id = db.Column(db.String(50), unique=True, nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
     user_query = db.Column(db.Text, nullable=False)
     status = db.Column(db.String(20), default='pending')
     generated_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -42,7 +42,7 @@ class Report(db.Model):
     source_distribution = db.Column(EncryptedString)  # JSON string
     
     # Relationships
-    information_pieces = db.relationship('InformationPiece', backref='report', lazy='selectin', primaryjoin="Report.report_id == InformationPiece.report_id")
+    information_pieces = db.relationship('InformationPiece', backref='report',  cascade='all, delete-orphan', passive_deletes=True, lazy='selectin', primaryjoin="Report.report_id == InformationPiece.report_id")
     
     def to_dict(self):
 
@@ -64,7 +64,7 @@ class Report(db.Model):
 
 class SearchHistory(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
     user_query = db.Column(db.Text, nullable=False)
     report_id = db.Column(db.String(50), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -80,7 +80,7 @@ class SearchHistory(db.Model):
 
 class InformationPiece(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    report_id = db.Column(db.String(50), db.ForeignKey('report.report_id'), nullable=False)
+    report_id = db.Column(db.String(50), db.ForeignKey('report.report_id', ondelete='CASCADE'), nullable=False)
     
     category_id = db.Column(db.Integer, db.ForeignKey('information_category.id'), nullable=True)  # because is added later
     source_id = db.Column(db.Integer, db.ForeignKey('discover_source.id'), nullable=False)
@@ -155,13 +155,13 @@ class FacebookCookies(db.Model):
 
 class ChatSession(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_email = db.Column(db.String(120), db.ForeignKey('user.email'), nullable=False)
-    report_id = db.Column(db.String(50), db.ForeignKey('report.report_id'), nullable=True)
+    user_email = db.Column(db.String(120), db.ForeignKey('user.email', ondelete='CASCADE'), nullable=False)
+    report_id = db.Column(db.String(50), db.ForeignKey('report.report_id', ondelete='CASCADE'), nullable=True)
     title = db.Column(db.String(255), nullable=True)
     save_history = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    messages = db.relationship('ChatMessage', backref='session', lazy=True)
+    messages = db.relationship('ChatMessage', backref='session', cascade='all, delete-orphan', lazy=True)
 
     def to_dict(self):
         return {
@@ -176,7 +176,7 @@ class ChatSession(db.Model):
 
 class ChatMessage(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    session_id = db.Column(db.Integer, db.ForeignKey('chat_session.id'), nullable=False)
+    session_id = db.Column(db.Integer, db.ForeignKey('chat_session.id', ondelete='CASCADE'), nullable=False)
     sender = db.Column(db.String(20), nullable=False)  # 'user' | 'assistant' | 'system'
     content = db.Column(EncryptedString, nullable=False)
     meta = db.Column(EncryptedString, nullable=True)  # JSON string for optional metadata (sources, provider info)
