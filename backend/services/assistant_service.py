@@ -2,13 +2,13 @@ from backend.wrappers.llm_wrapper import chat
 
 from models import InformationPiece, ChatSession, ChatMessage
 
-import backend.engines.rag_engine
-
+from backend.engines.rag_engine import RagEngine
 import json
 
 class AssistantService:
     def __init__(self, db):
         self.db = db
+        self.rag_engine = RagEngine()
         pass
     
     def get_session_messages(self, session_id):
@@ -55,53 +55,17 @@ class AssistantService:
         if not session:
             raise Exception("Session not found")
         
-        # Build context
-        context = []
-        try:
-            if scope == 'datapieces' and datapiece_ids:
-                piece = InformationPiece.query.filter(
-                    InformationPiece.id.in_(datapiece_ids)
-                ).first()
-                user_msg += "\n\nContext:\n" + str(piece.to_dict())
-                
-                # Similar pieces for datapiece
-                similar = InformationPiece.query.filter(
-                    InformationPiece.report_id.in_(piece.report_id),
-                    InformationPiece.category_id == piece.category_id,
-                    InformationPiece.id != piece.id
-                ).order_by(InformationPiece.created_at.desc()).limit(5).all()
-                
-                for sp in similar:
-                    user_msg += "\n\nSimilar pieces:\n" + str(sp.to_dict())
-            else:
-                # Whole report: include recent pieces for the report
-                context = [
-                    str(p.to_dict()) 
-                    for p in InformationPiece.query.filter_by(report_id=session.report_id)
-                        .order_by(InformationPiece.created_at.desc())
-                        .limit(40)
-                        .all()
-                ]
-                
-                user_msg += "\n\nContext:\n" + '\n\n'.join(context) if context else ""
-                
-        except Exception as e:
-            print(f'Failed loading datapiece context: {e}')
-
-        # Save user message if history is enabled
         try:
             if session.save_history:
-                um = ChatMessage(session_id=session.id, sender='user', content=user_msg)
+                um = ChatMessage(session_id=session.id, sender='user', content=user_msg + f" Scope {scope} | ID {datapiece_ids}")
                 self.db.session.add(um)
                 self.db.session.commit()
         except Exception:
-            self.db.session.rollback()
+            self.db.session.rollback()        
 
         # Prepare messages for LLM
         if scope == 'datapieces' and datapiece_ids:
-            system_prompt = {
-                'role': 'system',
-                'content': """You respond as a friendly assistant who explains risks and insights based on the provided sources and helps to maintain awareness about digital-footprint security and protecting yourself online. Evaluate information that you see as a whole (but part os smth bigger meaning there may be nore datapieces), its meaning, security implications, and exposure risks. 
+            system_prompt = """You respond as a friendly assistant who explains risks and insights based on the provided sources and helps to maintain awareness about digital-footprint security and protecting yourself online. Evaluate information that you see as a whole (but part os smth bigger meaning there may be nore datapieces), its meaning, security implications, and exposure risks. 
 
                                 The report is about the user who asked and contains information that was already found about him.
 
@@ -119,16 +83,16 @@ class AssistantService:
                                 Tell the user exactly which source link the information came from.
 
                                 Use HTML tags (i.e. <strong>, <italic> or <br>) instead of Markdown.
-                                                    """ }
+                                To start a new line, always use <br>.
+                                """ 
         else:
-            system_prompt = {
-            'role': 'system',
-            'content': """You respond as a friendly assistant who explains risks and insights based on the entire provided report.
+            system_prompt = """You respond as a friendly assistant who explains risks and insights based on the entire provided report.
                             The report may contain multiple datapieces about the user, and your job is to evaluate the document as a whole, its meaning, security implications, and exposure risks.
                             The report is about the user who asked and contains information that was already found about him.
 
                             Do not hallucinate.
                             Base all conclusions strictly on the content of the report and its context.
+                            Use Knowledge section if it is present below.
                             If something is unclear or missing, state exactly that.
                             Do not reveal technical identifiers (such as full IDs, tokens, hashes).
                             You may summarize or refer to information based on links, context snippets, titles, or descriptive fields included in the report.
@@ -141,24 +105,48 @@ class AssistantService:
                             Always specify where each insight comes from using the given source links or references.
 
                             Use HTML tags (e.g., <strong>, <italic>, <br>) instead of Markdown.
-                            """ }
-        
-        messages = [system_prompt, {'role': 'user', 'content': user_msg}]
-
-        # Call LLM abstraction with fallback
+                            To start a new line, always use <br>.
+                            """ 
+            
+        # Build context
+        context = []
         try:
-            llm_result = chat(
-                provider or 'groq', 
-                messages, 
-                context, 
-                fallback=['openai', 'local']
-            )
-            reply = llm_result.get('reply') if isinstance(llm_result, dict) else str(llm_result)
-            sources = llm_result.get('sources', []) if isinstance(llm_result, dict) else []
+            if scope == 'datapieces' and datapiece_ids:
+                piece = InformationPiece.query.filter(
+                    InformationPiece.id.in_(datapiece_ids)
+                ).first()
+                system_prompt += "\n\nContext:\n" + str(piece.to_dict())
+                
+                # Similar pieces for datapiece
+                similar = InformationPiece.query.filter(
+                    InformationPiece.report_id.in_(piece.report_id),
+                    InformationPiece.category_id == piece.category_id,
+                    InformationPiece.id != piece.id
+                ).order_by(InformationPiece.created_at.desc()).limit(5).all()
+                
+                for sp in similar:
+                    system_prompt += "\n\nSimilar pieces:\n" + str(sp.to_dict())
+            else:
+                # Whole report: include recent pieces for the report
+                context = [
+                    str(p.to_dict()) 
+                    for p in InformationPiece.query.filter_by(report_id=session.report_id)
+                        .order_by(InformationPiece.created_at.desc())
+                        .limit(40)
+                        .all()
+                ]
+                
+                system_prompt += "\n\nContext:\n" + '\n\n'.join(context) if context else ""
+                
         except Exception as e:
-            print(f'LLM call failed: {e}')
-            reply = 'Failed to get response from LLM.'
-            sources = []
+            print(f'Failed loading datapiece context: {e}')
+        
+        reply, sources = self.rag_engine.get_answer_with_rag(
+            user_msg=user_msg,
+            system_prompt=system_prompt,
+            provider=provider,
+            fallback=['openai', 'local']
+        )
 
         # Save assistant reply if history is enabled
         try:

@@ -78,12 +78,14 @@ class RagEngine:
         # Call LLM
         llm_result = llm_wrapper.chat(provider, messages, [], fallback)
         reply = llm_result.get('reply', 'No response from LLM')
+    
         
         # Sanitize response
         response_security = self.security_manager.secure_response(reply)
         sanitized_reply = response_security['processed_response']
+        #sanitized_reply = reply
         
-        return sanitized_reply, []  # No sources for now
+        return sanitized_reply, []  
     
     def _collect_DB_context(self, session_id):
         return
