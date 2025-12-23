@@ -32,6 +32,15 @@ from backend.engines.rag_engine import RagEngine
 
 # ==================== SETTINGS AND ROLE-AUTH DECORATORS ====================
 
+ALLOWED_TAGS = [
+    "p", "br",
+    "strong", "b",
+    "em", "i",
+    "ul", "ol", "li",
+    "blockquote",
+    "code", "pre"
+]
+
 def recursive_clean(item):
 
     if isinstance(item, dict):
@@ -42,7 +51,7 @@ def recursive_clean(item):
     
     elif isinstance(item, str):
 
-        return bleach.clean(item, tags=[], attributes={}, strip=True)
+        return bleach.clean(item, tags=ALLOWED_TAGS, attributes={}, strip=True)
     
     return item
 
