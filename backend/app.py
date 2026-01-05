@@ -19,7 +19,7 @@ from backend.wrappers.llm_wrapper import chat
 import bleach
 from functools import wraps
 
-from backend.wrappers.S3_wrapper import get_total_size_in_s3
+from backend.wrappers.S3_wrapper import get_total_size_in_s3, download_file_from_s3
 
 import ssl
 
@@ -832,7 +832,7 @@ def process_documents():
 def download_document(filename):
     """Download a document from the knowledge base"""
     try:
-        filepath = rag_engine.download_document(filename)
+        filepath = download_file_from_s3(filename)
         if not filepath:
             return jsonify({'success': False, 'message': 'Document not found'}), 404
         

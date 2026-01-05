@@ -9,7 +9,7 @@ from backend.utils.config import Config
 
 class WebScrapingService:
     
-    def __init__(self, min_words_threshold=2):
+    def __init__(self, min_words_threshold=1):
         
         self.browser_config = BrowserConfig(
             headless=True,  
@@ -18,7 +18,7 @@ class WebScrapingService:
             user_agent_generator_config={"user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36"}
         )
         
-        self.min_word_threshold = min_words_threshold
+        self.min_word_threshold = 1#min_words_threshold
         # thresholds for adaptive fallback
         self.primary_bm25_threshold = 0.97
         self.fallback_bm25_threshold = 0.2
@@ -42,7 +42,7 @@ class WebScrapingService:
         raw, fit = self._get_markdown(url, user_query)
         if not fit:
             fit = raw
-        elif len(fit) < 10*self.min_word_threshold:
+        elif len(fit) < 5*self.min_word_threshold:
             fit = raw
         
         if isinstance(fit, list):

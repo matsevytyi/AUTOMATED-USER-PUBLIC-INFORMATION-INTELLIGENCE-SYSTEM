@@ -25,11 +25,4 @@ RUN python -m playwright install --with-deps
 
 EXPOSE 5000
 
-# Healthcheck
-COPY docker_doctor.sh .
-RUN chmod +x docker_doctor.sh
-HEALTHCHECK --interval=45s --timeout=5s --retries=2 CMD ["./docker_doctor.sh"]
-
-
-
 CMD ["python", "backend/app.py"]

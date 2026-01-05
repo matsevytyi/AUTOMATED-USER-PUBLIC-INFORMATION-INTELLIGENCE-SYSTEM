@@ -1,6 +1,7 @@
 import boto3
 from botocore.exceptions import ClientError
 import os
+import tempfile
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -42,14 +43,16 @@ def upload_file_to_s3(local_file_path, s3_key=None):
         print(f"Error uploading file to S3: {e}")
         return None
 
-def download_file_from_s3(s3_key, local_file_path):
-    """Download a file from S3 bucket"""
+def download_file_from_s3(s3_key):
+    """Download a file from S3 bucket to a temporary file and return the path"""
     try:
+        with tempfile.NamedTemporaryFile(delete=False) as tmp:
+            local_file_path = tmp.name
         s3_client.download_file(S3_BUCKET_NAME, s3_key, local_file_path)
-        return True
+        return local_file_path
     except ClientError as e:
         print(f"Error downloading file from S3: {e}")
-        return False
+        return None
 
 def list_files_in_s3():
     """List all PDF files in the S3 bucket/prefix"""
